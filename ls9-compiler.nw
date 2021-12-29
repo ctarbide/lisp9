@@ -1,0 +1,648 @@
+
+Compiler, code generator
+
+<<ls9 macros>>=
+#define emitop(op) emit(op)
+#define cpushval(x) (Cts = cons(mkfix(x), Cts))
+@
+
+<<ls9 globals>>=
+full	Nullstr = NIL;
+full	Nullvec = NIL;
+
+full	Emitbuf = NIL;
+full	Here = 0;
+
+full	Cts = NIL;
+
+full	Blank = NIL;
+full	Zero = NIL;
+full	One = NIL;
+full	Ten = NIL;
+@
+
+<<ls9 impl>>=
+void emit(full x) {
+	full	n, i, k;
+	byte	*vp, *vn;
+
+	/* fprintf(stderr, "**************** emit: 0x%02"__PRIxSIZE"\n", x); */
+
+	if (Here >= stringlen(cdr(Emitbuf))) {
+		protect(x);
+		k = stringlen(cdr(Emitbuf));
+		n = mkstr(NULL, CHUNKSIZE + k);
+		vp = string(cdr(Emitbuf));
+		vn = string(n);
+		for (i = 0; i < k; i++) vn[i] = vp[i];
+		cdr(Emitbuf) = n;
+		unprot(1);
+	}
+	string(cdr(Emitbuf))[Here] = (byte)x;
+	Here++;
+}
+
+void emitarg(full i) {
+	if (i > 0xffff) {
+		error("bytecode argument out of range", mkfix(i));
+	}
+	emit(i @>> 8);
+	emit(i & 0xff);
+}
+
+void emitq(full x) {
+	full	i;
+
+	i = obindex(x);
+	vector(Obarray)[i] = x;
+	emitop(OP_QUOTE);
+	emitarg(i);
+}
+
+void patch(full a, full n) {
+	if (n > 0xffff) {
+		error("bytecode argument out of range", mkfix(n));
+	}
+	string(cdr(Emitbuf))[a] = (byte)(n @>> 8);
+	string(cdr(Emitbuf))[a+1] = (byte)(n & 0xff);
+}
+
+full cpopval(void) {
+	full	n;
+
+	if (NIL == Cts)
+		error("oops: compile stack underflow", UNDEF);
+	n = car(Cts);
+	Cts = cdr(Cts);
+	return fixval(n);
+}
+
+void swap(void) {
+	full	x;
+
+	if (NIL == Cts || NIL == cdr(Cts))
+		error("oops: compile stack underflow", UNDEF);
+	x = car(Cts);
+	car(Cts) = cadr(Cts);
+	cadr(Cts) = x;
+}
+
+full subr0(full x) {
+	if (x == P_cmdline)	return OP_CMDLINE;
+	if (x == P_errport)	return OP_ERRPORT;
+	if (x == P_gc)		return OP_GC;
+	if (x == P_gensym)	return OP_GENSYM;
+	if (x == P_inport)	return OP_INPORT;
+	if (x == P_obtab)	return OP_OBTAB;
+	if (x == P_outport)	return OP_OUTPORT;
+	if (x == P_quit)	return OP_QUIT;
+	if (x == P_symtab)	return OP_SYMTAB;
+	return NIL;
+}
+
+full subr1(full x) {
+	if (x == P_abs)		return OP_ABS;
+	if (x == P_alphac)	return OP_ALPHAC;
+	if (x == P_atom)	return OP_ATOM;
+	if (x == P_caar)	return OP_CAAR;
+	if (x == P_cadr)	return OP_CADR;
+	if (x == P_car)		return OP_CAR;
+	if (x == P_catchstar)	return OP_CATCHSTAR;
+	if (x == P_cdar)	return OP_CDAR;
+	if (x == P_cddr)	return OP_CDDR;
+	if (x == P_cdr)		return OP_CDR;
+	if (x == P_char)	return OP_CHAR;
+	if (x == P_charp)	return OP_CHARP;
+	if (x == P_charval)	return OP_CHARVAL;
+	if (x == P_close_port)	return OP_CLOSE_PORT;
+	if (x == P_constp)	return OP_CONSTP;
+	if (x == P_ctagp)	return OP_CTAGP;
+	if (x == P_delete)	return OP_DELETE;
+	if (x == P_downcase)	return OP_DOWNCASE;
+	if (x == P_dump_image)	return OP_DUMP_IMAGE;
+	if (x == P_eofp)	return OP_EOFP;
+	if (x == P_eval)	return OP_EVAL;
+	if (x == P_existsp)	return OP_EXISTSP;
+	if (x == P_fixp)	return OP_FIXP;
+	if (x == P_flush)	return OP_FLUSH;
+	if (x == P_format)	return OP_FORMAT;
+	if (x == P_funp)	return OP_FUNP;
+	if (x == P_inportp)	return OP_INPORTP;
+	if (x == P_liststr)	return OP_LISTSTR;
+	if (x == P_listvec)	return OP_LISTVEC;
+	if (x == P_load)	return OP_LOAD;
+	if (x == P_lowerc)	return OP_LOWERC;
+	if (x == P_mx)		return OP_MX;
+	if (x == P_mx1)		return OP_MX1;
+	if (x == P_not)		return OP_NULL;
+	if (x == P_null)	return OP_NULL;
+	if (x == P_numeric)	return OP_NUMERIC;
+	if (x == P_open_infile) return OP_OPEN_INFILE;
+	if (x == P_outportp)	return OP_OUTPORTP;
+	if (x == P_pair)	return OP_PAIR;
+	if (x == P_set_inport)	return OP_SET_INPORT;
+	if (x == P_set_outport) return OP_SET_OUTPORT;
+	if (x == P_ssize)	return OP_SSIZE;
+	if (x == P_stringp)	return OP_STRINGP;
+	if (x == P_strlist)	return OP_STRLIST;
+	if (x == P_symbol)	return OP_SYMBOL;
+	if (x == P_symbolp)	return OP_SYMBOLP;
+	if (x == P_symname)	return OP_SYMNAME;
+	if (x == P_syscmd)	return OP_SYSCMD;
+	if (x == P_untag)	return OP_UNTAG;
+	if (x == P_upcase)	return OP_UPCASE;
+	if (x == P_upperc)	return OP_UPPERC;
+	if (x == P_veclist)	return OP_VECLIST;
+	if (x == P_vectorp)	return OP_VECTORP;
+	if (x == P_vsize)	return OP_VSIZE;
+	if (x == P_whitec)	return OP_WHITEC;
+	return NIL;
+}
+
+full subr2(full x) {
+	if (x == P_cons)	return OP_CONS;
+	if (x == P_div)		return OP_DIV;
+	if (x == P_eq)		return OP_EQ;
+	if (x == P_nreconc)	return OP_NRECONC;
+	if (x == P_reconc)	return OP_RECONC;
+	if (x == P_rem)		return OP_REM;
+	if (x == P_rename)	return OP_RENAME;
+	if (x == P_sless)	return OP_SLESS;
+	if (x == P_slteq)	return OP_SLTEQ;
+	if (x == P_sequal)	return OP_SEQUAL;
+	if (x == P_sgrtr)	return OP_SGRTR;
+	if (x == P_sgteq)	return OP_SGTEQ;
+	if (x == P_setcar)	return OP_SETCAR;
+	if (x == P_setcdr)	return OP_SETCDR;
+	if (x == P_sfill)	return OP_SFILL;
+	if (x == P_siless)	return OP_SILESS;
+	if (x == P_silteq)	return OP_SILTEQ;
+	if (x == P_siequal)	return OP_SIEQUAL;
+	if (x == P_sigrtr)	return OP_SIGRTR;
+	if (x == P_sigteq)	return OP_SIGTEQ;
+	if (x == P_sref)	return OP_SREF;
+	if (x == P_throwstar)	return OP_THROWSTAR;
+	if (x == P_vfill)	return OP_VFILL;
+	if (x == P_vref)	return OP_VREF;
+	return NIL;
+}
+
+full subr3(full x) {
+	if (x == P_sset)	return OP_SSET;
+	if (x == P_substr)	return OP_SUBSTR;
+	if (x == P_subvec)	return OP_SUBVEC;
+	if (x == P_vset)	return OP_VSET;
+	return NIL;
+}
+
+full osubr0(full x) {
+	if (x == P_peekc)	return OP_PEEKC;
+	if (x == P_read)	return OP_READ;
+	if (x == P_readc)	return OP_READC;
+	return NIL;
+}
+
+full osubr1(full x) {
+	if (x == P_error)		return OP_ERROR;
+	if (x == P_mkstr)		return OP_MKSTR;
+	if (x == P_mkvec)		return OP_MKVEC;
+	if (x == P_numstr)		return OP_NUMSTR;
+	if (x == P_open_outfile)	return OP_OPEN_OUTFILE;
+	if (x == P_prin)		return OP_PRIN;
+	if (x == P_princ)		return OP_PRINC;
+	if (x == P_strnum)		return OP_STRNUM;
+	if (x == P_writec)		return OP_WRITEC;
+	return NIL;
+}
+
+full lsubr0(full x) {
+	if (x == P_times)	return OP_TIMES;
+	if (x == P_plus)	return OP_PLUS;
+	if (x == P_conc)	return OP_CONC;
+	if (x == P_nconc)	return OP_NCONC;
+	if (x == P_sconc)	return OP_SCONC;
+	if (x == P_vconc)	return OP_VCONC;
+	return NIL;
+}
+
+full lsubr1(full x) {
+	if (x == P_bitop)	return OP_BITOP;
+	if (x == P_max)		return OP_MAX;
+	if (x == P_min)		return OP_MIN;
+	if (x == P_minus)	return OP_MINUS;
+	if (x == P_less)	return OP_LESS;
+	if (x == P_lteq)	return OP_LTEQ;
+	if (x == P_equal)	return OP_EQUAL;
+	if (x == P_grtr)	return OP_GRTR;
+	if (x == P_gteq)	return OP_GTEQ;
+	if (x == P_cless)	return OP_CLESS;
+	if (x == P_clteq)	return OP_CLTEQ;
+	if (x == P_cequal)	return OP_CEQUAL;
+	if (x == P_cgrtr)	return OP_CGRTR;
+	if (x == P_cgteq)	return OP_CGTEQ;
+	return NIL;
+}
+
+full subrp(full x) {
+	return	NIL != subr0(x) ||
+		NIL != subr1(x) ||
+		NIL != subr2(x) ||
+		NIL != subr3(x) ||
+		NIL != osubr0(x) ||
+		NIL != osubr1(x) ||
+		NIL != lsubr0(x) ||
+		NIL != lsubr1(x);
+}
+
+void compprog(full x, int t) {
+	x = cdr(x);
+	if (NIL == x) {
+		emitq(NIL);
+		return;
+	}
+	while (cdr(x) != NIL) {
+		compexpr(car(x), 0);
+		x = cdr(x);
+	}
+	compexpr(car(x), t);
+}
+
+void compsetq(full x) {
+	compexpr(caddr(x), 0);
+	if (caadr(x) == I_ref) {
+		emitop(OP_SETREF);
+		emitarg(fixval(cadadr(x)));
+	}
+	else if (caadr(x) == I_arg) {
+		emitop(OP_SETARG);
+		emitarg(fixval(cadadr(x)));
+	}
+	else {
+		error("oops: unknown location in setq", x);
+	}
+}
+
+void compif(full x, int t, int star) {
+	compexpr(cadr(x), 0);
+	emitop(star? OP_BRT: OP_BRF);
+	cpushval(Here);
+	emitarg(0);
+	compexpr(caddr(x), t);
+	if (cdddr(x) != NIL) {
+		emitop(OP_JMP);
+		cpushval(Here);
+		emitarg(0);
+		swap();
+		patch(cpopval(), Here);
+		compexpr(cadddr(x), t);
+	}
+	patch(cpopval(), Here);
+}
+
+void setupenv(full m) {
+	while (m != NIL) {
+		if (caar(m) == I_e)
+			emitop(OP_CPREF);
+		else if (caar(m) == I_a)
+			emitop(OP_CPARG);
+		else
+			error("oops: unknown location in closure", m);
+		emitarg(fixval(cadar(m)));
+		emitarg(fixval(caddar(m)));
+		m = cdr(m);
+	}
+}
+
+full dottedp(full x) {
+	while (pairp(x)) x = cdr(x);
+	return x != NIL;
+}
+
+void compcls(full x) {
+	full	a, na, b, m;
+
+	emitop(OP_JMP);
+	cpushval(Here);
+	emitarg(0);
+	a = Here;
+	na = length(flatargs(cadr(x)));
+	if (dottedp(cadr(x))) {
+		emitop(OP_ENTCOL);
+		emitarg(na-1);
+	}
+	else {
+		emitop(OP_ENTER);
+		emitarg(na);
+	}
+	b = cons(S_prog, cdddr(x));
+	protect(b);
+	compexpr(b, 1);
+	unprot(1);
+	emitop(OP_RETURN);
+	patch(cpopval(), Here);
+	m = caddr(x);
+	if (m != NIL) {
+		emitop(OP_MKENV);
+		emitarg(length(m));
+		setupenv(m);
+	}
+	else {
+		emitop(OP_PROPENV);
+	}
+	emitop(OP_CLOSURE);
+	emitarg(a);
+}
+
+void compapply(full x, int t) {
+	full	xs;
+
+	xs = reverse(cddr(x));
+	protect(xs);
+	compexpr(car(xs), 0);
+	for (xs = cdr(xs); xs != NIL; xs = cdr(xs)) {
+		emitop(OP_PUSH);
+		compexpr(car(xs), 0);
+		emitop(OP_CONS);
+	}
+	emitop(OP_PUSH);
+	unprot(1);
+	compexpr(cadr(x), 0);
+	emitop(t? OP_APPLIST: OP_APPLIS);
+}
+
+void compapp(full x, int t) {
+	full	xs;
+
+	xs = reverse(cdr(x));
+	protect(xs);
+	while (xs != NIL) {
+		compexpr(car(xs), 0);
+		emitop(OP_PUSH);
+		xs = cdr(xs);
+	}
+	unprot(1);
+	emitop(OP_PUSHVAL);
+	emitarg(length(cdr(x)));
+	compexpr(car(x), 0);
+	emitop(t? OP_TAILAPP: OP_APPLY);
+}
+
+void compsubr0(full x, full op) {
+	ckargs(x, 0, 0);
+	emitop(op);
+}
+
+void compsubr1(full x, full op) {
+	ckargs(x, 1, 1);
+	compexpr(cadr(x), 0);
+	emitop(op);
+	if (OP_CATCHSTAR == op) emitop(OP_APPLY);
+}
+
+void compsubr2(full x, full op) {
+	ckargs(x, 2, 2);
+	compexpr(caddr(x), 0);
+	emitop(OP_PUSH);
+	compexpr(cadr(x), 0);
+	emitop(op);
+}
+
+void compsubr3(full x, full op) {
+	ckargs(x, 3, 3);
+	compexpr(cadddr(x), 0);
+	emitop(OP_PUSH);
+	compexpr(caddr(x), 0);
+	emitop(OP_PUSH);
+	compexpr(cadr(x), 0);
+	emitop(op);
+}
+
+void composubr0(full x, full op) {
+	ckargs(x, 0, 1);
+	if (NIL == cdr(x))
+		emitop(OP_INPORT);
+	else
+		compexpr(cadr(x), 0);
+	emitop(op);
+}
+
+void composubr1(full x, full op) {
+	ckargs(x, 1, 2);
+	if (NIL == cddr(x)) {
+		if (OP_ERROR == op) {
+			/**/
+		}
+		else if (OP_MKSTR == op) {
+			emitq(Blank);
+		}
+		else if (OP_MKVEC == op) {
+			emitq(NIL);
+		}
+		else if (OP_OPEN_OUTFILE == op) {
+			emitq(NIL);
+		}
+		else if (OP_NUMSTR == op || OP_STRNUM == op) {
+			emitq(Ten);
+		}
+		else if (OP_WRITEC == op ||
+			 OP_PRIN == op ||
+			 OP_PRINC == op)
+		{
+			emitop(OP_OUTPORT);
+		}
+	}
+	else {
+		if (OP_ERROR == op) op = OP_ERROR2;
+		compexpr(caddr(x), 0);
+	}
+	emitop(OP_PUSH);
+	compexpr(cadr(x), 0);
+	emitop(op);
+}
+
+void complsubr0(full x, full op) {
+	if (NIL == cdr(x)) {
+		if (OP_PLUS == op)
+			emitq(Zero);
+		else if (OP_TIMES == op)
+			emitq(One);
+		else if (OP_VCONC == op)
+			emitq(Nullvec);
+		else if (OP_SCONC == op)
+			emitq(Nullstr);
+		else if (OP_CONC == op)
+			emitq(NIL);
+		else if (OP_NCONC == op)
+			emitq(NIL);
+	}
+	else if (NIL == cddr(x)) {
+		compexpr(cadr(x), 0);
+	}
+	else if (OP_CONC == op || OP_SCONC == op ||
+		 OP_VCONC == op || OP_NCONC == op)
+	{
+		x = reverse(cdr(x));
+		protect(x);
+		emitq(NIL);
+		while (x != NIL) {
+			emitop(OP_PUSH);
+			compexpr(car(x), 0);
+			emitop(OP_CONS);
+			x = cdr(x);
+		}
+		unprot(1);
+		emitop(op);
+	}
+	else {
+		x = cdr(x);
+		protect(x);
+		compexpr(car(x), 0);
+		x = cdr(x);
+		while (x != NIL) {
+			emitop(OP_PUSH);
+			compexpr(car(x), 0);
+			emitop(op);
+			x = cdr(x);
+		}
+		unprot(1);
+	}
+}
+
+void compbitop(full x) {
+	if (NIL == cddr(x) || NIL == cdddr(x))
+		error("bitop: too few arguments", cdr(x));
+	compexpr(cadr(x), 0);
+	emitop(OP_PUSH);
+	x = cddr(x);
+	compexpr(car(x), 0);
+	for (x = cdr(x); x != NIL; x = cdr(x)) {
+		emitop(OP_PUSH);
+		compexpr(car(x), 0);
+		emitop(OP_BITOP);
+	}
+	emitop(OP_DROP);
+}
+
+void complsubr1(full x, full op) {
+	ckargs(x, 1, FULL_MAX);
+	if (OP_BITOP == op) {
+		compbitop(x);
+		return;
+	}
+	if (NIL == cddr(x)) {
+		if (OP_MIN == op || OP_MAX == op) {
+			compexpr(cadr(x), 0);
+		}
+		else if (OP_MINUS == op) {
+			compexpr(cadr(x), 0);
+			emitop(OP_NEGATE);
+		}
+		else {
+			emitq(TRUE);
+		}
+	}
+	else {
+		if (op != OP_MINUS && op != OP_MIN && op != OP_MAX) {
+			emitop(OP_PUSHTRUE);
+		}
+		x = cdr(x);
+		compexpr(car(x), 0);
+		for (x = cdr(x); x != NIL; x = cdr(x)) {
+			emitop(OP_PUSH);
+			compexpr(car(x), 0);
+			emitop(op);
+		}
+		if (op != OP_MINUS && op != OP_MIN && op != OP_MAX)
+			emitop(OP_POP);
+	}
+}
+
+full compile(full x) {
+	full	n;
+
+	Emitbuf = mkatom(T_BYTECODE, mkstr(NULL, CHUNKSIZE));
+	Here = 0;
+	Cts = NIL;
+	compexpr(x, 0);
+	emitop(OP_HALT);
+	n = mkatom(T_BYTECODE, subprog(cdr(Emitbuf), Here));
+	Emitbuf = NIL;
+	return n;
+}
+
+void compexpr(full x, int t) {
+	full	op, y;
+
+	if (atomp(x)) {
+		emitq(x);
+	}
+	else if (car(x) == S_quote) {
+		emitq(cadr(x));
+	}
+	else if (car(x) == I_arg) {
+		emitop(OP_ARG);
+		emitarg(fixval(cadr(x)));
+	}
+	else if (car(x) == I_ref) {
+		emitop(OP_REF);
+		emitarg(fixval(cadr(x)));
+		y = htlookup(Symhash, caddr(x));
+		if (UNDEF == y)
+			emitarg(0);
+		else
+			emitarg(fixval(cdr(y)));
+	}
+	else if (car(x) == S_if) {
+		compif(x, t, 0);
+	}
+	else if (car(x) == S_ifstar) {
+		compif(x, t, 1);
+	}
+	else if (car(x) == I_closure) {
+		compcls(x);
+	}
+	else if (car(x) == S_prog) {
+		compprog(x, t);
+	}
+	else if (car(x) == S_setq) {
+		compsetq(x);
+	}
+	else if (car(x) == S_apply) {
+		compapply(x, t);
+	}
+	else if (car(x) == S_macro) {
+		compexpr(caddr(x), 0);
+		emitop(OP_MACRO);
+		y = htlookup(Symhash, cadr(x));
+		if (UNDEF == y) error("oops: unknown name in MACRO", cadr(x));
+		emitarg(fixval(cdr(y)));
+	}
+	else if (NIL != (op = subr0(car(x)))) {
+		compsubr0(x, op);
+	}
+	else if (NIL != (op = subr1(car(x)))) {
+		compsubr1(x, op);
+	}
+	else if (NIL != (op = subr2(car(x)))) {
+		compsubr2(x, op);
+	}
+	else if (NIL != (op = subr3(car(x)))) {
+		compsubr3(x, op);
+	}
+	else if (NIL != (op = osubr0(car(x)))) {
+		composubr0(x, op);
+	}
+	else if (NIL != (op = osubr1(car(x)))) {
+		composubr1(x, op);
+	}
+	else if (NIL != (op = lsubr0(car(x)))) {
+		complsubr0(x, op);
+	}
+	else if (NIL != (op = lsubr1(car(x)))) {
+		complsubr1(x, op);
+	}
+	else { /* application */
+		compapp(x, t);
+	}
+}
+@

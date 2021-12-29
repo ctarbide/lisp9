@@ -1,0 +1,144 @@
+
+<<ls9 macros>>=
+#define mkifix(v) mkfix((full)(v))
+@
+
+<<ls9 init>>=
+P_plus = symref("+");
+P_minus = symref("-");
+P_times = symref("*");
+P_div = symref("div");
+P_rem = symref("rem");
+P_grtr = symref(">");
+P_gteq = symref(">=");
+P_less = symref("<");
+P_lteq = symref("<=");
+P_equal = symref("=");
+P_bitop = symref("bitop");
+@
+
+<<ls9 impl>>=
+void fixover(char *who, full x, full y) {
+	char	b[100];
+
+	sprintf(b, "%s: fixnum overflow", who);
+	error(b, cons(x, cons(y, NIL)));
+}
+
+full add(full x, full y) {
+	if (!fixp(x)) expect("+", "fixnum", x);
+	if (!fixp(y)) expect("+", "fixnum", y);
+	if (add_ovfl(fixval(x), fixval(y))) fixover("+", x, y);
+	return mkifix((ifull)fixval(x) + (ifull)fixval(y));
+}
+
+full xsub(full x, full y) {
+	if (!fixp(x)) expect("-", "fixnum", x);
+	if (!fixp(y)) expect("-", "fixnum", y);
+	if (sub_ovfl(fixval(y), fixval(x))) fixover("+", y, x);
+	return mkifix((ifull)fixval(y) - (ifull)fixval(x));
+}
+
+full mul(full x, full y) {
+	ifull	a, b;
+
+	if (!fixp(x)) expect("*", "fixnum", x);
+	if (!fixp(y)) expect("*", "fixnum", y);
+	a = (ifull)fixval(x);
+	b = (ifull)fixval(y);
+	/*
+	 * Overflow of a*b is undefined, sooo
+	 */
+	/* Shortcuts, also protect later division */
+	if (0 == a || 0 == b) return Zero;
+	if (1 == a) return y;
+	if (1 == b) return x;
+	/* abs(IFULL_MIN) is undefined using two's complement, so */
+	if (IFULL_MIN == a || IFULL_MIN == b) fixover("*", x, y);
+	/* Catch the rest */
+	/* Bug: result may not be IFULL_MIN
+	 */
+	if (abs_wrap(a) > IFULL_MAX / abs_wrap(b)) fixover("*", x, y);
+	return mkifix(a * b);
+}
+
+full intdiv(full x, full y) {
+	if (!fixp(x)) expect("div", "fixnum", x);
+	if (!fixp(y)) expect("div", "fixnum", y);
+	if (0 == fixval(y)) error("div: divide by zero", UNDEF);
+	return mkifix((ifull)fixval(x) / (ifull)fixval(y));
+}
+
+full intrem(full x, full y) {
+	if (!fixp(x)) expect("rem", "fixnum", x);
+	if (!fixp(y)) expect("rem", "fixnum", y);
+	if (0 == fixval(y)) error("rem: divide by zero", UNDEF);
+	return mkifix((ifull)fixval(x) % (ifull)fixval(y));
+}
+
+void grtr(full x, full y) {
+	if (!fixp(x)) expect(">", "fixnum", x);
+	if (!fixp(y)) expect(">", "fixnum", y);
+	if ((ifull)fixval(y) <= (ifull)fixval(x)) stackset(Sp-1, NIL);
+}
+
+void gteq(full x, full y) {
+	if (!fixp(x)) expect(">=", "fixnum", x);
+	if (!fixp(y)) expect(">=", "fixnum", y);
+	if ((ifull)fixval(y) < (ifull)fixval(x)) stackset(Sp-1, NIL);
+}
+
+void less(full x, full y) {
+	if (!fixp(x)) expect("<", "fixnum", x);
+	if (!fixp(y)) expect("<", "fixnum", y);
+	if ((ifull)fixval(y) >= (ifull)fixval(x)) stackset(Sp-1, NIL);
+}
+
+void lteq(full x, full y) {
+	if (!fixp(x)) expect("<=", "fixnum", x);
+	if (!fixp(y)) expect("<=", "fixnum", y);
+	if ((ifull)fixval(y) > (ifull)fixval(x)) stackset(Sp-1, NIL);
+}
+
+void equal(full x, full y) {
+	/* fprintf(stderr, "**************** equal: %"PRIxFULL"   %"PRIxFULL"\n", x, y); */
+	if (!fixp(x)) expect("=", "fixnum", x);
+	if (!fixp(y)) expect("=", "fixnum", y);
+	if (fixval(y) != fixval(x)) stackset(Sp-1, NIL);
+}
+
+full bitop(full x, full y, full o) {
+	full	i, op, a, b;
+
+	if (!fixp(o)) expect("bitop", "fixnum", o);
+	if (!fixp(x)) expect("bitop", "fixnum", x);
+	if (!fixp(y)) expect("bitop", "fixnum", y);
+	op = fixval(o);
+	b = fixval(x);
+	a = i = fixval(y);
+	switch (op) {
+	case  0: a =  0;        break;
+	case  1: a =   a &  b;  break;
+	case  2: a =   a & ~b;  break;
+	case  3: /* a =   a; */ break;
+	case  4: a =  ~a &  b;  break;
+	case  5: a =        b;  break;
+	case  6: a =   a ^  b;  break;
+	case  7: a =   a |  b;  break;
+	case  8: a = ~(a |  b); break;
+	case  9: a = ~(a ^  b); break;
+	case 10: a =       ~b;  break;
+	case 11: a =   a | ~b;  break;
+	case 12: a =  ~a;       break;
+	case 13: a =  ~a |  b;  break;
+	case 14: a = ~(a &  b); break;
+	case 15: a = (full)~0;  break;
+	case 16: a = a  @<<  b;  break;
+	case 17: a = i  @>>  b;  break;
+	case 18: a = a  @>>  b;  break;
+	default: error("bitop: invalid opcode", o);
+		 break;
+	}
+	return mkfix(a);
+}
+@

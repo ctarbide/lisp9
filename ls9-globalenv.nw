@@ -1,0 +1,22 @@
+
+Global environment
+
+<<ls9 globals>>=
+full	Glob = NIL;
+
+<<ls9 impl>>=
+void bindnew(full v, full a) {
+	full	n;
+
+	n = cons(a, NIL);
+	n = cons(v, n);
+	Glob = cons(n, Glob);
+}
+
+void bindset(full v, full a) {
+	full	b;
+
+	b = assq(v, Glob);
+	if (b != NIL) cadr(b) = a;
+}
+@

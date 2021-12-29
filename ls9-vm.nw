@@ -1,0 +1,1244 @@
+
+Abstract machine
+
+<<ls9 definitions>>=
+enum {	OP_ILL, OP_APPLIS, OP_APPLIST, OP_APPLY, OP_TAILAPP, OP_QUOTE,
+	OP_ARG, OP_REF, OP_PUSH, OP_PUSHTRUE, OP_PUSHVAL, OP_POP,
+	OP_DROP, OP_JMP, OP_BRF, OP_BRT, OP_HALT, OP_CATCHSTAR,
+	OP_THROWSTAR, OP_CLOSURE, OP_MKENV, OP_PROPENV, OP_CPREF,
+	OP_CPARG, OP_ENTER, OP_ENTCOL, OP_RETURN, OP_SETARG, OP_SETREF,
+	OP_MACRO,
+
+	OP_ABS, OP_ALPHAC, OP_ATOM, OP_BITOP, OP_CAAR, OP_CADR, OP_CAR,
+	OP_CDAR, OP_CDDR, OP_CDR, OP_CEQUAL, OP_CGRTR, OP_CGTEQ,
+	OP_CHAR, OP_CHARP, OP_CHARVAL, OP_CLESS, OP_CLOSE_PORT,
+	OP_CLTEQ, OP_CMDLINE, OP_CONC, OP_CONS, OP_CONSTP, OP_CTAGP,
+	OP_DELETE, OP_DIV, OP_DOWNCASE, OP_DUMP_IMAGE, OP_EOFP, OP_EQ,
+	OP_EQUAL, OP_ERROR, OP_ERROR2, OP_ERRPORT, OP_EVAL, OP_EXISTSP,
+	OP_FIXP, OP_FLUSH, OP_FORMAT, OP_FUNP, OP_GC, OP_GENSYM,
+	OP_GRTR, OP_GTEQ, OP_INPORT, OP_INPORTP, OP_LESS, OP_LISTSTR,
+	OP_LISTVEC, OP_LOAD, OP_LOWERC, OP_LTEQ, OP_MAX, OP_MIN,
+	OP_MINUS, OP_MKSTR, OP_MKVEC, OP_MX, OP_MX1, OP_NCONC,
+	OP_NEGATE, OP_NRECONC, OP_NULL, OP_NUMERIC, OP_NUMSTR,
+	OP_OBTAB, OP_OPEN_INFILE, OP_OPEN_OUTFILE, OP_OUTPORT,
+	OP_OUTPORTP, OP_PAIR, OP_PEEKC, OP_PLUS, OP_PRIN, OP_PRINC,
+	OP_QUIT, OP_READ, OP_READC, OP_RECONC, OP_REM, OP_RENAME,
+	OP_SCONC, OP_SEQUAL, OP_SETCAR, OP_SETCDR, OP_SET_INPORT,
+	OP_SET_OUTPORT, OP_SFILL, OP_SGRTR, OP_SGTEQ, OP_SIEQUAL,
+	OP_SIGRTR, OP_SIGTEQ, OP_SILESS, OP_SILTEQ, OP_SLESS, OP_SLTEQ,
+	OP_SREF, OP_SSET, OP_SSIZE, OP_STRINGP, OP_STRLIST, OP_STRNUM,
+	OP_SUBSTR, OP_SUBVEC, OP_SYMBOL, OP_SYMBOLP, OP_SYMNAME,
+	OP_SYMTAB, OP_SYSCMD, OP_TIMES, OP_UNTAG, OP_UPCASE, OP_UPPERC,
+	OP_VCONC, OP_VECLIST, OP_VECTORP, OP_VFILL, OP_VREF, OP_VSET,
+	OP_VSIZE, OP_WHITEC, OP_WRITEC };
+@
+
+<<ls9 macros>>=
+#define ins()		(string(cdr(Prog))[Ip])
+
+#define op1()		fetcharg(string(cdr(Prog)), Ip+1)
+#define op2()		fetcharg(string(cdr(Prog)), Ip+3)
+
+#define skip(n)		(Ip += (n))
+#define clear(n)	(Sp -= (n))
+
+#define box(x)		cons((x), NIL)
+#define boxref(x)	car(x)
+#define boxset(x,v)	(car(x) = (v))
+
+#define stackref(n)	(vector(Rts)[n])
+#define stackset(n,v)	(vector(Rts)[n] = (v))
+
+#define envbox(n)	(vector(Ep)[n])
+#define argbox(n)	(stackref(Fp-(n)))
+
+#define argref(n)	boxref(argbox(n))
+#define arg(n)		boxref(stackref(Sp-(n)))
+
+#define closure_ip(c)	cadr(c)
+#define closure_env(c)	caddr(c)
+#define closure_prog(c)	cadddr(c)
+
+#define whitespc(c) \
+	(' '  == (c) || \
+	 '\t' == (c) || \
+	 '\n' == (c) || \
+	 '\r' == (c) || \
+	 '\f' == (c))
+@
+
+<<ls9 globals>>=
+char *op_names[] = {
+	"OP_ILL", "OP_APPLIS", "OP_APPLIST", "OP_APPLY", "OP_TAILAPP", "OP_QUOTE",
+	"OP_ARG", "OP_REF", "OP_PUSH", "OP_PUSHTRUE", "OP_PUSHVAL", "OP_POP",
+	"OP_DROP", "OP_JMP", "OP_BRF", "OP_BRT", "OP_HALT", "OP_CATCHSTAR",
+	"OP_THROWSTAR", "OP_CLOSURE", "OP_MKENV", "OP_PROPENV", "OP_CPREF",
+	"OP_CPARG", "OP_ENTER", "OP_ENTCOL", "OP_RETURN", "OP_SETARG", "OP_SETREF",
+	"OP_MACRO",
+
+	"OP_ABS", "OP_ALPHAC", "OP_ATOM", "OP_BITOP", "OP_CAAR", "OP_CADR", "OP_CAR",
+	"OP_CDAR", "OP_CDDR", "OP_CDR", "OP_CEQUAL", "OP_CGRTR", "OP_CGTEQ",
+	"OP_CHAR", "OP_CHARP", "OP_CHARVAL", "OP_CLESS", "OP_CLOSE_PORT",
+	"OP_CLTEQ", "OP_CMDLINE", "OP_CONC", "OP_CONS", "OP_CONSTP", "OP_CTAGP",
+	"OP_DELETE", "OP_DIV", "OP_DOWNCASE", "OP_DUMP_IMAGE", "OP_EOFP", "OP_EQ",
+	"OP_EQUAL", "OP_ERROR", "OP_ERROR2", "OP_ERRPORT", "OP_EVAL", "OP_EXISTSP",
+	"OP_FIXP", "OP_FLUSH", "OP_FORMAT", "OP_FUNP", "OP_GC", "OP_GENSYM",
+	"OP_GRTR", "OP_GTEQ", "OP_INPORT", "OP_INPORTP", "OP_LESS", "OP_LISTSTR",
+	"OP_LISTVEC", "OP_LOAD", "OP_LOWERC", "OP_LTEQ", "OP_MAX", "OP_MIN",
+	"OP_MINUS", "OP_MKSTR", "OP_MKVEC", "OP_MX", "OP_MX1", "OP_NCONC",
+	"OP_NEGATE", "OP_NRECONC", "OP_NULL", "OP_NUMERIC", "OP_NUMSTR",
+	"OP_OBTAB", "OP_OPEN_INFILE", "OP_OPEN_OUTFILE", "OP_OUTPORT",
+	"OP_OUTPORTP", "OP_PAIR", "OP_PEEKC", "OP_PLUS", "OP_PRIN", "OP_PRINC",
+	"OP_QUIT", "OP_READ", "OP_READC", "OP_RECONC", "OP_REM", "OP_RENAME",
+	"OP_SCONC", "OP_SEQUAL", "OP_SETCAR", "OP_SETCDR", "OP_SET_INPORT",
+	"OP_SET_OUTPORT", "OP_SFILL", "OP_SGRTR", "OP_SGTEQ", "OP_SIEQUAL",
+	"OP_SIGRTR", "OP_SIGTEQ", "OP_SILESS", "OP_SILTEQ", "OP_SLESS", "OP_SLTEQ",
+	"OP_SREF", "OP_SSET", "OP_SSIZE", "OP_STRINGP", "OP_STRLIST", "OP_STRNUM",
+	"OP_SUBSTR", "OP_SUBVEC", "OP_SYMBOL", "OP_SYMBOLP", "OP_SYMNAME",
+	"OP_SYMTAB", "OP_SYSCMD", "OP_TIMES", "OP_UNTAG", "OP_UPCASE", "OP_UPPERC",
+	"OP_VCONC", "OP_VECLIST", "OP_VECTORP", "OP_VFILL", "OP_VREF", "OP_VSET",
+	"OP_VSIZE", "OP_WHITEC", "OP_WRITEC" };
+
+full	Prog = NIL;
+
+full	Ip = 0;
+
+full	Acc = NIL;
+
+full	Sz = CHUNKSIZE;
+
+full	Rts = NIL,
+	Sp = NIL,
+	Fp = NIL;
+
+full	E0 = NIL,
+	Ep = NIL;
+
+volatile full	Run = 0;
+full	Argv;
+@
+
+<<ls9 init>>=
+P_abs = symref("abs");
+P_alphac = symref("alphac");
+P_atom = symref("atom");
+P_caar = symref("caar");
+P_cadr = symref("cadr");
+P_car = symref("car");
+P_catchstar = symref("catch*");
+P_cdar = symref("cdar");
+P_cddr = symref("cddr");
+P_cdr = symref("cdr");
+P_cequal = symref("c=");
+P_cgrtr = symref("c>");
+P_cgteq = symref("c>=");
+P_char = symref("char");
+P_charp = symref("charp");
+P_charval = symref("charval");
+P_cless = symref("c<");
+P_close_port = symref("close-port");
+P_clteq = symref("c<=");
+P_cmdline = symref("cmdline");
+P_conc = symref("conc");
+P_cons = symref("cons");
+P_constp = symref("constp");
+P_ctagp = symref("ctagp");
+P_delete = symref("delete");
+P_downcase = symref("downcase");
+P_dump_image = symref("dump-image");
+P_eofp = symref("eofp");
+P_eq = symref("eq");
+P_error = symref("error");
+P_errport = symref("errport");
+P_eval = symref("eval");
+P_existsp = symref("existsp");
+P_fixp = symref("fixp");
+P_flush = symref("flush");
+P_format = symref("format");
+P_funp = symref("funp");
+P_gc = symref("gc");
+P_gensym = symref("gensym");
+P_inport = symref("inport");
+P_inportp = symref("inportp");
+P_liststr = symref("liststr");
+P_listvec = symref("listvec");
+P_load = symref("load");
+P_lowerc = symref("lowerc");
+P_max = symref("max");
+P_min = symref("min");
+P_mkstr = symref("mkstr");
+P_mkvec = symref("mkvec");
+P_mx = symref("mx");
+P_mx1 = symref("mx1");
+P_not = symref("not");
+P_nconc = symref("nconc");
+P_nreconc = symref("nreconc");
+P_null = symref("null");
+P_numeric = symref("numeric");
+P_numstr = symref("numstr");
+P_obtab = symref("obtab");
+P_open_infile = symref("open-infile");
+P_open_outfile = symref("open-outfile");
+P_outport = symref("outport");
+P_outportp = symref("outportp");
+P_pair = symref("pair");
+P_peekc = symref("peekc");
+P_prin = symref("prin");
+P_princ = symref("princ");
+P_quit = symref("quit");
+P_read = symref("read");
+P_readc = symref("readc");
+P_reconc = symref("reconc");
+P_rename = symref("rename");
+P_sconc = symref("sconc");
+P_sequal = symref("s=");
+P_set_inport = symref("set-inport");
+P_set_outport = symref("set-outport");
+P_setcar = symref("setcar");
+P_setcdr = symref("setcdr");
+P_sfill = symref("sfill");
+P_sgrtr = symref("s>");
+P_sgteq = symref("s>=");
+P_siequal = symref("si=");
+P_sigrtr = symref("si>");
+P_sigteq = symref("si>=");
+P_siless = symref("si<");
+P_silteq = symref("si<=");
+P_sless = symref("s<");
+P_slteq = symref("s<=");
+P_sref = symref("sref");
+P_sset = symref("sset");
+P_ssize = symref("ssize");
+P_stringp = symref("stringp");
+P_strlist = symref("strlist");
+P_strnum = symref("strnum");
+P_substr = symref("substr");
+P_subvec = symref("subvec");
+P_symbol = symref("symbol");
+P_symbolp = symref("symbolp");
+P_symname = symref("symname");
+P_symtab = symref("symtab");
+P_syscmd = symref("syscmd");
+P_throwstar = symref("throw*");
+P_untag = symref("untag");
+P_upcase = symref("upcase");
+P_upperc = symref("upperc");
+P_vconc = symref("vconc");
+P_veclist = symref("veclist");
+P_vectorp = symref("vectorp");
+P_vfill = symref("vfill");
+P_vref = symref("vref");
+P_vset = symref("vset");
+P_vsize = symref("vsize");
+P_whitec = symref("whitec");
+P_writec = symref("writec");
+@
+
+<<ls9 impl>>=
+void run(full x) {
+	byte opcode;
+	Acc = NIL;
+	Prog = x;
+	Ip = 0;
+	if (setjmp(Errtag) != 0)
+		Ip = throwerr(Handler);
+	for (Run=1; Run;) {
+	opcode = ins();
+	switch (opcode) {
+	case OP_APPLIS:
+		Ip = applis(0);
+		break;
+	case OP_APPLIST:
+		Ip = applis(1);
+		break;
+	case OP_TAILAPP:
+		Ip = apply(1);
+		break;
+	case OP_APPLY:
+		Ip = apply(0);
+		break;
+	case OP_QUOTE:
+		Acc = vector(Obarray)[op1()];
+		skip(ISIZE1);
+		break;
+	case OP_ARG:
+		Acc = argref(op1());
+		skip(ISIZE1);
+		break;
+	case OP_REF:
+		Acc = boxref(envbox(op1()));
+		if (UNDEF == Acc)
+			error("undefined symbol", vector(Symbols)[op2()]);
+		if (Tp >= NTRACE) Tp = 0;
+		Trace[Tp++] = op2();
+		skip(ISIZE2);
+		break;
+	case OP_DROP:
+		Sp--;
+		skip(ISIZE0);
+		break;
+	case OP_POP:
+		Acc = stackref(Sp);
+		Sp--;
+		skip(ISIZE0);
+		break;
+	case OP_PUSH:
+		push(cons(Acc, NIL));
+		skip(ISIZE0);
+		break;
+	case OP_PUSHTRUE:
+		push(TRUE);
+		skip(ISIZE0);
+		break;
+	case OP_PUSHVAL:
+		push(mkfix(op1()));
+		skip(ISIZE1);
+		break;
+	case OP_JMP:
+		Ip = op1();
+		break;
+	case OP_BRF:
+		/* fprintf(stderr, "**************** OP_BRF: Acc: %"PRIxFULL"\n", Acc); */
+		if (NIL == Acc)
+			Ip = op1();
+		else
+			skip(ISIZE1);
+		/* fprintf(stderr, "**************** OP_BRF: Ip: %"PRIxFULL"\n", Ip); */
+		break;
+	case OP_BRT:
+		/* fprintf(stderr, "**************** OP_BRT: Acc: %"PRIxFULL"\n", Acc); */
+		if (NIL == Acc)
+			skip(ISIZE1);
+		else
+			Ip = op1();
+		/* fprintf(stderr, "**************** OP_BRT: Ip: %"PRIxFULL"\n", Ip); */
+		break;
+	case OP_HALT:
+		return;
+	case OP_CATCHSTAR:
+		push(box(mkctag()));
+		push(mkfix(1));
+		skip(ISIZE0);
+		break;
+	case OP_THROWSTAR:
+		Ip = throw(Acc, arg(0));
+		break;
+	case OP_MKENV:
+		Acc = mkvec(op1());
+		skip(ISIZE1);
+		break;
+	case OP_PROPENV:
+		Acc = Ep;
+		skip(ISIZE0);
+		break;
+	case OP_CPARG:
+		vector(Acc)[op2()] = argbox(op1());
+		skip(ISIZE2);
+		break;
+	case OP_CPREF:
+		vector(Acc)[op2()] = envbox(op1());
+		skip(ISIZE2);
+		break;
+	case OP_CLOSURE:
+		Acc = closure(op1(), Acc);
+		skip(ISIZE1);
+		break;
+	case OP_ENTER:
+		if (fixval(stackref(Sp-2)) != op1())
+			error("wrong number of arguments", UNDEF);
+		push(mkfix(Fp));
+		Fp = Sp-4;
+		skip(ISIZE1);
+		break;
+	case OP_ENTCOL:
+		entcol(op1());
+		skip(ISIZE1);
+		break;
+	case OP_RETURN:
+		Ip = ret();
+		break;
+	case OP_SETARG:
+		boxset(argbox(op1()), Acc);
+		skip(ISIZE1);
+		break;
+	case OP_SETREF:
+		boxset(envbox(op1()), Acc);
+		skip(ISIZE1);
+		break;
+	case OP_MACRO:
+		newmacro(op1(), Acc);
+		skip(ISIZE1);
+		break;
+	case OP_CMDLINE:
+		Acc = Argv;
+		skip(ISIZE0);
+		break;
+	case OP_QUIT:
+		exit(EXIT_SUCCESS);
+		skip(ISIZE0);
+		break;
+	case OP_OBTAB:
+		Acc = Obarray;
+		skip(ISIZE0);
+		break;
+	case OP_SYMTAB:
+		Acc = Symbols;
+		skip(ISIZE0);
+		break;
+	case OP_ERROR:
+		if (!stringp(Acc)) expect("error", "string", Acc);
+		error((char *) string(Acc), UNDEF);
+		skip(ISIZE0);
+		break;
+	case OP_ERROR2:
+		if (!stringp(Acc)) expect("error", "string", Acc);
+		error((char *) string(Acc), arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_ERRPORT:
+		Acc = mkport(Errport, T_OUTPORT);
+		skip(ISIZE0);
+		break;
+	case OP_INPORT:
+		Acc = mkport(Inport, T_INPORT);
+		skip(ISIZE0);
+		break;
+	case OP_OUTPORT:
+		Acc = mkport(Outport, T_OUTPORT);
+		skip(ISIZE0);
+		break;
+	case OP_GC:
+		Acc = b_gc();
+		skip(ISIZE0);
+		break;
+	case OP_GENSYM:
+		Acc = gensym();
+		skip(ISIZE0);
+		break;
+	case OP_ABS:
+		if (!fixp(Acc)) expect("abs", "fixnum", Acc);
+		if (IFULL_MIN == (ifull)fixval(Acc)) {
+			error("abs: fixnum overflow", Acc);
+		}
+		if ((ifull)fixval(Acc) < 0) Acc = mkifix(-(ifull)fixval(Acc));
+		skip(ISIZE0);
+		break;
+	case OP_ALPHAC:
+		if (!charp(Acc)) expect("alphac", "char", Acc);
+		Acc = isalpha(charval(Acc))? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_ATOM:
+		Acc = pairp(Acc)? NIL: TRUE;
+		skip(ISIZE0);
+		break;
+	case OP_CAR:
+		if (!pairp(Acc)) expect("car", "pair", Acc);
+		Acc = car(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_CDR:
+		if (!pairp(Acc)) expect("cdr", "pair", Acc);
+		Acc = cdr(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_CAAR:
+		if (!pairp(Acc) || !pairp(car(Acc)))
+			expect("caar", "nested pair", Acc);
+		Acc = caar(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_CADR:
+		if (!pairp(Acc) || !pairp(cdr(Acc)))
+			expect("cadr", "nested pair", Acc);
+		Acc = cadr(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_CDAR:
+		if (!pairp(Acc) || !pairp(car(Acc)))
+			expect("cdar", "nested pair", Acc);
+		Acc = cdar(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_CDDR:
+		if (!pairp(Acc) || !pairp(cdr(Acc)))
+			expect("cddr", "nested pair", Acc);
+		Acc = cddr(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_CHAR:
+		if (!fixp(Acc)) expect("char", "fixnum", Acc);
+		if (fixval(Acc) > 255)
+			error("char: value out of range", Acc);
+		Acc = mkchar(fixval(Acc));
+		skip(ISIZE0);
+		break;
+	case OP_CHARP:
+		Acc = charp(Acc)? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_CHARVAL:
+		if (!charp(Acc)) expect("charval", "char", Acc);
+		Acc = mkfix(charval(Acc));
+		skip(ISIZE0);
+		break;
+	case OP_CLOSE_PORT:
+		if (!inportp(Acc) && !outportp(Acc))
+			expect("close-port", "port", Acc);
+		close_port(portno(Acc));
+		Acc = NIL;
+		skip(ISIZE0);
+		break;
+	case OP_CONSTP:
+		Acc = constp(Acc)? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_CTAGP:
+		Acc = ctagp(Acc)? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_DELETE:
+		if (!stringp(Acc)) expect("delete", "string", Acc);
+		if (remove((char *) string(Acc)) < 0)
+			error("delete: cannot delete", Acc);
+		Acc = NIL;
+		skip(ISIZE0);
+		break;
+	case OP_DOWNCASE:
+		if (!charp(Acc)) expect("downcase", "char", Acc);
+		Acc = mkchar(tolower((int)charval(Acc)));
+		skip(ISIZE0);
+		break;
+	case OP_DUMP_IMAGE:
+		if (!stringp(Acc)) expect("dump-image", "string", Acc);
+		dump_image(Acc);
+		Acc = TRUE;
+		skip(ISIZE0);
+		break;
+	case OP_EOFP:
+		Acc = (EOFMARK == Acc? TRUE: NIL);
+		skip(ISIZE0);
+		break;
+	case OP_EVAL:
+		Acc = eval(Acc, 1);
+		skip(ISIZE0);
+		break;
+	case OP_EXISTSP:
+		if (!stringp(Acc)) expect("existsp", "string", Acc);
+		Acc = existsp((char *) string(Acc));
+		skip(ISIZE0);
+		break;
+	case OP_FIXP:
+		Acc = fixp(Acc)? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_FLUSH:
+		if (!outportp(Acc)) expect("flush", "outport", Acc);
+		fflush(Ports[portno(Acc)]);
+		skip(ISIZE0);
+		break;
+	case OP_FORMAT:
+		Acc = format(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_FUNP:
+		Acc = closurep(Acc)? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_INPORTP:
+		Acc = inportp(Acc)? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_LISTSTR:
+		if (!listp(Acc)) expect("liststr", "list", Acc);
+		Acc = liststr(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_LISTVEC:
+		if (!listp(Acc)) expect("listvec", "list", Acc);
+		Acc = listvec(Acc, 0);
+		skip(ISIZE0);
+		break;
+	case OP_LOAD:
+		load(Acc);
+		Acc = TRUE;
+		skip(ISIZE0);
+		break;
+	case OP_LOWERC:
+		if (!charp(Acc)) expect("lowerc", "char", Acc);
+		Acc = islower(charval(Acc))? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_MX:
+		Acc = expand(Acc, 1);
+		skip(ISIZE0);
+		break;
+	case OP_MX1:
+		Acc = expand(Acc, 0);
+		skip(ISIZE0);
+		break;
+	case OP_NEGATE:
+		if (!fixp(Acc)) expect("-", "fixnum", Acc);
+		if (IFULL_MIN == (ifull)fixval(Acc)) {
+			error("-: fixnum overflow", Acc);
+		}
+		Acc = mkifix(-(ifull)fixval(Acc));
+		skip(ISIZE0);
+		break;
+	case OP_NULL:
+		Acc = (NIL == Acc? TRUE: NIL);
+		skip(ISIZE0);
+		break;
+	case OP_NUMSTR:
+		if (!fixp(Acc)) expect("numstr", "fixnum", Acc);
+		if (!fixp(arg(0))) expect("numstr", "fixnum", arg(0));
+		Acc = numstr(Acc, fixval(arg(0)));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_NUMERIC:
+		if (!charp(Acc)) expect("numeric", "char", Acc);
+		Acc = isdigit(charval(Acc))? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_OPEN_INFILE:
+		if (!stringp(Acc)) expect("open-infile", "string", Acc);
+		Acc = openfile(Acc, 0);
+		skip(ISIZE0);
+		break;
+	case OP_OPEN_OUTFILE:
+		if (!stringp(Acc)) expect("open-outfile", "string", Acc);
+		Acc = openfile(Acc, NIL == arg(0)? 1: 2);
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_OUTPORTP:
+		Acc = outportp(Acc)? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_PAIR:
+		Acc = pairp(Acc)? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_PEEKC:
+		if (!inportp(Acc)) expect("peekc", "inport", Acc);
+		Acc = b_readc(portno(Acc), 1);
+		skip(ISIZE0);
+		break;
+	case OP_READ:
+		if (!inportp(Acc) && !stringp(Acc))
+			expect("read", "inport", Acc);
+		Acc = b_read(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_READC:
+		if (!inportp(Acc)) expect("readc", "inport", Acc);
+		Acc = b_readc(portno(Acc), 0);
+		skip(ISIZE0);
+		break;
+	case OP_CONC:
+		Acc = lconc(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_NCONC:
+		Acc = nlconc(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_SCONC:
+		Acc = sconc(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_SET_INPORT:
+		if (!inportp(Acc)) expect("set-inport", "inport", Acc);
+		Inport = portno(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_SET_OUTPORT:
+		if (!outportp(Acc)) expect("set-outport", "outport", Acc);
+		Outport = portno(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_SSIZE:
+		if (!stringp(Acc)) expect("ssize", "string", Acc);
+		Acc = mkfix(stringlen(Acc)-1);
+		skip(ISIZE0);
+		break;
+	case OP_STRNUM:
+		if (!stringp(Acc)) expect("strnum", "string", Acc);
+		if (!fixp(arg(0))) expect("strnum", "fixnum", arg(0));
+		Acc = strnum((char *) string(Acc), fixval(arg(0)));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SYMBOLP:
+		Acc = symbolp(Acc)? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_SYMBOL:
+		if (!stringp(Acc)) expect("symbol", "string", Acc);
+		Acc = b_symbol(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_SYMNAME:
+		if (!symbolp(Acc)) expect("symname", "symbol", Acc);
+		Acc = b_symname(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_STRINGP:
+		Acc = stringp(Acc)? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_STRLIST:
+		if (!stringp(Acc)) expect("strlist", "string", Acc);
+		Acc = strlist(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_SYSCMD:
+		if (!stringp(Acc)) expect("syscmd", "string", Acc);
+		Acc = mkfix((full)(system((char *) string(Acc)) @>> 8));
+		skip(ISIZE0);
+		break;
+	case OP_UNTAG:
+		Acc = untag(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_UPCASE:
+		if (!charp(Acc)) expect("upcase", "char", Acc);
+		/* CAST */
+		Acc = mkchar(toupper((int)charval(Acc)));
+		skip(ISIZE0);
+		break;
+	case OP_UPPERC:
+		if (!charp(Acc)) expect("upperc", "char", Acc);
+		Acc = isupper(charval(Acc))? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_VCONC:
+		Acc = vconc(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_VECLIST:
+		if (!vectorp(Acc)) expect("veclist", "vector", Acc);
+		Acc = veclist(Acc);
+		skip(ISIZE0);
+		break;
+	case OP_VECTORP:
+		Acc = vectorp(Acc)? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_VSIZE:
+		if (!vectorp(Acc)) expect("vsize", "vector", Acc);
+		Acc = mkfix(veclen(Acc));
+		skip(ISIZE0);
+		break;
+	case OP_WHITEC:
+		if (!charp(Acc)) expect("whitec", "char", Acc);
+		Acc = whitespc(charval(Acc))? TRUE: NIL;
+		skip(ISIZE0);
+		break;
+	case OP_BITOP:
+		Acc = bitop(Acc, arg(0), arg(1));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_CLESS:
+		cless(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_CLTEQ:
+		clteq(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_CEQUAL:
+		cequal(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_CGRTR:
+		cgrtr(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_CGTEQ:
+		cgteq(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_CONS:
+		Acc = cons(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_DIV:
+		Acc = intdiv(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_EQ:
+		Acc = (Acc == arg(0))? TRUE: NIL;
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_EQUAL:
+		equal(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_GRTR:
+		grtr(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_GTEQ:
+		gteq(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_LESS:
+		less(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_LTEQ:
+		lteq(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_MAX:
+		if ((ifull)fixval(arg(0)) > (ifull)fixval(Acc)) Acc = arg(0);
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_MIN:
+		if ((ifull)fixval(arg(0)) < (ifull)fixval(Acc)) Acc = arg(0);
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_MINUS:
+		Acc = xsub(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_MKSTR:
+		Acc = b_mkstr(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_MKVEC:
+		Acc = b_mkvec(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_NRECONC:
+		if (!listp(Acc)) expect("nreconc", "list", Acc);
+		if (constp(Acc)) error("nreconc: immutable", Acc);
+		Acc = nreconc(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_PLUS:
+		Acc = add(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_PRIN:
+		if (!outportp(arg(0))) expect("prin", "outport", arg(0));
+		b_prin(Acc, portno(arg(0)), 1);
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_PRINC:
+		if (!outportp(arg(0))) expect("princ", "outport", arg(0));
+		b_prin(Acc, portno(arg(0)), 0);
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_RECONC:
+		if (!listp(Acc)) expect("reconc", "list", Acc);
+		Acc = reconc(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_REM:
+		Acc = intrem(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_RENAME:
+		b_rename(Acc, arg(0));
+		Acc = NIL;
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SETCAR:
+		if (!pairp(Acc)) expect("setcar", "pair", Acc);
+		if (constp(Acc)) error("setcar: immutable", Acc);
+		car(Acc) = arg(0);
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SETCDR:
+		if (!pairp(Acc)) expect("setcdr", "pair", Acc);
+		if (constp(Acc)) error("setcdr: immutable", Acc);
+		cdr(Acc) = arg(0);
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SLESS:
+		Acc = sless(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SLTEQ:
+		Acc = slteq(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SEQUAL:
+		Acc = sequal(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SGRTR:
+		Acc = sgrtr(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SGTEQ:
+		Acc = sgteq(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SILESS:
+		Acc = siless(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SILTEQ:
+		Acc = silteq(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SIEQUAL:
+		Acc = siequal(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SIGRTR:
+		Acc = sigrtr(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SIGTEQ:
+		Acc = sigteq(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SFILL:
+		sfill(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SREF:
+		Acc = sref(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_SSET:
+		sset(Acc, arg(0), arg(1));
+		clear(2);
+		skip(ISIZE0);
+		break;
+	case OP_SUBSTR:
+		Acc = substr(Acc, arg(0), arg(1));
+		clear(2);
+		skip(ISIZE0);
+		break;
+	case OP_SUBVEC:
+		Acc = subvec(Acc, arg(0), arg(1));
+		clear(2);
+		skip(ISIZE0);
+		break;
+	case OP_TIMES:
+		Acc = mul(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_VFILL:
+		vfill(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_VREF:
+		Acc = vref(Acc, arg(0));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	case OP_VSET:
+		vset(Acc, arg(0), arg(1));
+		clear(2);
+		skip(ISIZE0);
+		break;
+	case OP_WRITEC:
+		if (!charp(Acc)) expect("writec", "char", Acc);
+		if (!outportp(arg(0))) expect("writec", "outport", arg(0));
+		b_writec((int)charval(Acc), portno(arg(0)));
+		clear(1);
+		skip(ISIZE0);
+		break;
+	default:
+		error("illegal instruction", mkfix(ins()));
+		return;
+	} }
+	error("interrupted", UNDEF);
+}
+
+void stkalloc(full k) {
+	full	i, n, *vs, *vn;
+
+	if (Sp + k >= Sz) {
+		/* allocate multiples of CHUNKSIZE */
+		if (k >= CHUNKSIZE) {
+			k = Sp+k-Sz;
+			k = CHUNKSIZE * (1 + (k / CHUNKSIZE));
+		}
+		else {
+			k = CHUNKSIZE;
+		}
+		n = mkvec(Sz + k);
+		vs = vector(Rts);
+		vn = vector(n);
+		for (i=0; i<=Sp; i++) vn[i] = vs[i];
+		Sz += k;
+		Rts = n;
+	}
+}
+
+void push(full x) {
+	Tmp = x;
+	stkalloc(1);
+	Tmp = NIL;
+	Sp++;
+	stackset(Sp, x);
+}
+
+full pop(void) {
+	if ((ifull)Sp < 0) error("oops: stack underflow", UNDEF);
+	Sp--;
+	return stackref(Sp+1);
+}
+
+full closure(full i, full e) {
+	full	c;
+
+	c = cons(Prog, NIL);
+	c = cons(e, c);
+	protect(c);
+	c = cons(mkfix(i), c);
+	unprot(1);
+	return mkatom(T_CLOSURE, c);
+}
+
+full conses(full n) {
+	full	k;
+
+	for (k = 0; pairp(n); n = cdr(n))
+		k++;
+	return k;
+}
+
+full apply(full tail) {
+	full	n, m, pn, pm, i, k, e;
+
+	if (!closurep(Acc))
+		error("application of non-function", Acc);
+	if (tail) {
+		Ep = closure_env(Acc);
+		Prog = closure_prog(Acc);
+		m = fixval(stackref(Sp));
+		n = fixval(stackref(Sp-m-4));
+		pm = Sp-m;
+		pn = Sp-m-n-4;
+		if (n == m) {
+			for (i=0; i<=m; i++)
+				stackset(pn+i, stackref(pm+i));
+			Fp = fixval(stackref(Sp-m-1));
+			Sp -= n+2;
+		}
+		else {
+			e = stackref(Sp-m-3);
+			k = stackref(Sp-m-2);
+			Fp = fixval(stackref(Sp-m-1));
+			for (i=0; i<=m; i++)
+				stackset(pn+i, stackref(pm+i));
+			Sp -= n+2;
+			stackset(Sp-1, e);
+			stackset(Sp,   k);
+		}
+	}
+	else {
+		push(Ep);
+		push(cons(mkfix(Ip+1), Prog));
+		Ep = closure_env(Acc);
+		Prog = closure_prog(Acc);
+	}
+	return fixval(closure_ip(Acc));
+}
+
+full ret(void) {
+	full	r, n, *v;
+
+	v = vector(Rts);
+	Fp = fixval(v[Sp]);
+	r = v[Sp-1];
+	Prog = cdr(r);
+	Ep = v[Sp-2];
+	n = fixval(v[Sp-3]);
+	Sp -= n+4;
+	return fixval(car(r));
+}
+
+void entcol(full fix) {
+	full	n, na, i, s, d, a, x, new;
+
+	na = fixval(stackref(Sp-2));
+	if (na < fix)
+		error("too few arguments", UNDEF);
+	protect(a = NIL);
+	i = Sp-fix-3;
+	for (n = na-fix; n; n--) {
+		x = cons(boxref(stackref(i)), NIL);
+		if (NIL == a) {
+			a = x;
+			car(Protected) = a;
+		}
+		else {
+			cdr(a) = x;
+			a = cdr(a);
+		}
+		i--;
+	}
+	a = unprot(1);
+	if (na > fix) {
+		new = box(a);
+		stackset(Sp-fix-3, new);
+	}
+	else {
+		ifull si;
+		push(NIL);
+		s = Sp - na - 3;
+		d = Sp - na - 2;
+		/* CAST */
+		for (si = (ifull)(na + 2); si >= 0; si--) {
+			/* CAST */
+			stackset(d + (full)si, stackref(s + (full)si));
+		}
+		new = mkfix(1+fix);
+		stackset(Sp-2, new);
+		new = box(NIL);
+		stackset(Sp-fix-3, new);
+	}
+	push(mkfix(Fp));
+	Fp = Sp-4;
+}
+
+full mkctag(void) {
+	full	n;
+
+	n = cons(Ep, Prog);
+	Tmp = n; n = cons(mkfix(Fp), n);
+	Tmp = n; n = cons(mkfix(Sp), n);
+	Tmp = n; n = cons(mkfix(Ip+2), n);
+	Tmp = NIL;
+	return mkatom(T_CATCHTAG, n);
+}
+
+full throw(full ct, full v) {
+	if (!ctagp(ct)) expect("throw", "catch tag", ct);
+	ct = cdr(ct);
+	Ip = fixval(car(ct)); ct = cdr(ct);
+	Sp = fixval(car(ct)); ct = cdr(ct);
+	Fp = fixval(car(ct)); ct = cdr(ct);
+	Ep = car(ct);         ct = cdr(ct);
+	Prog = ct;
+	Acc = v;
+	return Ip;
+}
+
+full throwerr(full ct) {
+	full	n;
+
+	n = assq(S_errval, Glob);
+	n = NIL == n? NIL: cadr(n);
+	return throw(ct, n);
+}
+
+full interpret(full x) {
+	full	n;
+	int	i;
+
+	E0 = mkvec(length(Glob));
+	i = 0;
+	for (n = Glob; n != NIL; n = cdr(n)) {
+		vector(E0)[i] = cdar(n);
+		i++;
+	}
+	Ep = E0;
+	run(x);
+	return Acc;
+}
+
+void begin_rec(void) {
+	protect(Prog);
+	protect(Ep);
+	protect(mkfix(Ip));
+	protect(mkfix(Sp));
+	protect(mkfix(Fp));
+}
+
+void end_rec(void) {
+	Fp = fixval(unprot(1));
+	Sp = fixval(unprot(1));
+	Ip = fixval(unprot(1));
+	Ep = unprot(1);
+	Prog = unprot(1);
+}
+
+full eval(full x, int r) {
+	Tmp = x;
+	if (r) begin_rec();
+	protect(x);
+	Tmp = NIL;
+	x = expand(x, 1);  car(Protected) = x;
+	syncheck(x, 1);
+	x = clsconv(x);    car(Protected) = x;
+	x = compile(x);    car(Protected) = x;
+	x = interpret(x);
+	unprot(1);
+	if (r) end_rec();
+	return x;
+}
+
+full applis(full tail) {
+	full	a, p, new, k, i;
+
+	a = boxref(stackref(Sp));
+	if (!pairp(a) && a != NIL) error("apply: expected list", a);
+	k = conses(a);
+	stkalloc(k);
+	Sp += k;
+	i = Sp-1;
+	for (p = a; p != NIL; p = cdr(p)) {
+		if (atomp(p)) error("apply: dotted list", a);
+		new = box(car(p));
+		stackset(i, new);
+		i--;
+	}
+	new = mkfix(k);
+	stackset(Sp, new);
+	return apply(tail);
+}
+@

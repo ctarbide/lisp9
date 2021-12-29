@@ -1,0 +1,103 @@
+
+<<ls9 macros>>=
+#define tag(n)		(Tag[n])
+
+#define car(x)          (Car[x])
+#define cdr(x)          (Cdr[x])
+#define caar(x)         (Car[Car[x]])
+#define cadr(x)         (Car[Cdr[x]])
+#define cdar(x)         (Cdr[Car[x]])
+#define cddr(x)         (Cdr[Cdr[x]])
+#define caaar(x)        (Car[Car[Car[x]]])
+#define caadr(x)        (Car[Car[Cdr[x]]])
+#define cadar(x)        (Car[Cdr[Car[x]]])
+#define caddr(x)        (Car[Cdr[Cdr[x]]])
+#define cdaar(x)        (Cdr[Car[Car[x]]])
+#define cdadr(x)        (Cdr[Car[Cdr[x]]])
+#define cddar(x)        (Cdr[Cdr[Car[x]]])
+#define cdddr(x)        (Cdr[Cdr[Cdr[x]]])
+#define caaaar(x)       (Car[Car[Car[Car[x]]]])
+#define caaadr(x)       (Car[Car[Car[Cdr[x]]]])
+#define caadar(x)       (Car[Car[Cdr[Car[x]]]])
+#define caaddr(x)       (Car[Car[Cdr[Cdr[x]]]])
+#define cadaar(x)       (Car[Cdr[Car[Car[x]]]])
+#define cadadr(x)       (Car[Cdr[Car[Cdr[x]]]])
+#define caddar(x)       (Car[Cdr[Cdr[Car[x]]]])
+#define cadddr(x)       (Car[Cdr[Cdr[Cdr[x]]]])
+#define cdaaar(x)       (Cdr[Car[Car[Car[x]]]])
+#define cdaadr(x)       (Cdr[Car[Car[Cdr[x]]]])
+#define cdadar(x)       (Cdr[Car[Cdr[Car[x]]]])
+#define cdaddr(x)       (Cdr[Car[Cdr[Cdr[x]]]])
+#define cddaar(x)       (Cdr[Cdr[Car[Car[x]]]])
+#define cddadr(x)       (Cdr[Cdr[Car[Cdr[x]]]])
+#define cdddar(x)       (Cdr[Cdr[Cdr[Car[x]]]])
+#define cddddr(x)       (Cdr[Cdr[Cdr[Cdr[x]]]])
+
+/*
+ * Basic constructors 
+ */
+
+
+/*
+ * Accessors
+ */
+
+#define portno(n)	(cadr(n))
+#define string(n)	((byte *) &Vectors[Cdr[n]])
+
+/* XXX: why "- 1"? */
+#define stringlen(n)	(Vectors[Cdr[n] - 1])
+
+#define symname(n)	(string(n))
+#define symlen(n)	(stringlen(n))
+#define vector(n)	(&Vectors[Cdr[n]])
+#define veclink(n)	(Vectors[Cdr[n] - 2])
+#define vecndx(n)	veclink(n)
+#define vecsize(k)	(2 + ((k) + sizeof(full)-1) / sizeof(full))
+#define veclen(n)	(vecsize(stringlen(n)) - 2)
+
+/*
+ * Type predicates
+ */
+
+#define charp(n) \
+	(!specialp(n) && (tag(n) & ATOM_TAG) && T_CHAR == car(n))
+
+#define closurep(n) \
+	(!specialp(n) && (tag(n) & ATOM_TAG) && T_CLOSURE == car(n))
+
+#define ctagp(n) \
+	(!specialp(n) && (tag(n) & ATOM_TAG) && T_CATCHTAG == car(n))
+
+#define eofp(n)	(EOFMARK == (n))
+
+#define fixp(n) \
+	(!specialp(n) && (tag(n) & ATOM_TAG) && T_FIXNUM == car(n))
+
+#define inportp(n) \
+	(!specialp(n) && (tag(n) & ATOM_TAG) && \
+	 (tag(n) & PORT_TAG) && T_INPORT == car(n))
+
+#define outportp(n) \
+	(!specialp(n) && (tag(n) & ATOM_TAG) && \
+	 (tag(n) & PORT_TAG) && T_OUTPORT == car(n))
+
+#define stringp(n) \
+	(!specialp(n) && (tag(n) & VECTOR_TAG) && T_STRING == car(n))
+
+#define symbolp(n) \
+	(!specialp(n) && (tag(n) & VECTOR_TAG) && T_SYMBOL == car(n))
+
+#define vectorp(n) \
+	(!specialp(n) && (tag(n) & VECTOR_TAG) && T_VECTOR == car(n))
+
+#define atomp(n) \
+	(specialp(n) || (tag(n) & ATOM_TAG) || (tag(n) & VECTOR_TAG))
+
+#define pairp(x) (!atomp(x))
+
+#define listp(x) (NIL == (x) || pairp(x))
+
+#define constp(n) \
+	(!specialp(n) && (tag(n) & CONST_TAG))
+@

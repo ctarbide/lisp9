@@ -1,0 +1,457 @@
+
+Inline functions, arithmetics
+
+<<ls9 macros>>=
+#define stackset(n,v)	(vector(Rts)[n] = (v))
+@
+
+<<ls9 impl>>=
+full assq(full x, full a) {
+	for (; a != NIL; a = cdr(a))
+		if (caar(a) == x) return car(a);
+	return NIL;
+}
+@
+
+Inline functions, characters
+
+<<ls9 impl>>=
+void cless(full x, full y) {
+	if (!charp(x)) expect("c<", "char", x);
+	if (!charp(y)) expect("c<", "char", y);
+	if (charval(y) >= charval(x)) stackset(Sp-1, NIL);
+}
+
+void clteq(full x, full y) {
+	if (!charp(x)) expect("c<=", "char", x);
+	if (!charp(y)) expect("c<=", "char", y);
+	if (charval(y) > charval(x)) stackset(Sp-1, NIL);
+}
+
+void cequal(full x, full y) {
+	if (!charp(x)) expect("c=", "char", x);
+	if (!charp(y)) expect("c=", "char", y);
+	if (charval(y) != charval(x)) stackset(Sp-1, NIL);
+}
+
+void cgrtr(full x, full y) {
+	if (!charp(x)) expect("c>", "char", x);
+	if (!charp(y)) expect("c>", "char", y);
+	if (charval(y) <= charval(x)) stackset(Sp-1, NIL);
+}
+
+void cgteq(full x, full y) {
+	if (!charp(x)) expect("c>=", "char", x);
+	if (!charp(y)) expect("c>=", "char", y);
+	if (charval(y) < charval(x)) stackset(Sp-1, NIL);
+}
+@
+
+Inline functions, vectors
+
+<<ls9 impl>>=
+full b_mkvec(full x, full a) {
+	full	n, i, k, *v;
+
+	if (!fixp(x)) expect("mkvec", "fixnum", x);
+	k = fixval(x);
+	n = mkvec(k);
+	v = vector(n);
+	for (i=0; i<k; i++) v[i] = a;
+	return n;
+}
+
+full vconc(full x) {
+	full	p, n, *v, k, m;
+
+	k = 0;
+	for (p = x; p != NIL; p = cdr(p)) {
+		if (!vectorp(car(p))) {
+			expect("vconc", "vector", car(p));
+		}
+		k += veclen(car(p));
+	}
+	n = mkvec(k);
+	v = vector(n);
+	k = 0;
+	for (p = x; p != NIL; p = cdr(p)) {
+		m = veclen(car(p));
+		memcpy(&v[k], vector(car(p)), m*sizeof(full));
+		k += m;
+	}
+	return n;
+}
+
+full vref(full x, full n) {
+	full	i;
+	/* fprintf(stderr, "**************** vref: %"PRIxFULL"   %"PRIxFULL"\n", x, n); */
+	if (!vectorp(x)) expect("vref", "vector", x);
+	if (!fixp(n)) expect("vref", "fixnum", n);
+	i = fixval(n);
+	if (i >= veclen(x)) {
+		error("vref: index out of range", n);
+	}
+	return vector(x)[i];
+}
+
+void vfill(full x, full a) {
+	full	i, k, *v;
+
+	if (!vectorp(x)) expect("vfill", "vector", x);
+	if (constp(x)) error("vfill: immutable", x);
+	k = veclen(x);
+	v = vector(x);
+	for (i=0; i<k; i++) v[i] = a;
+}
+
+void vset(full v, full n, full r) {
+	full	i;
+
+	if (!vectorp(v)) expect("vset", "vector", v);
+	if (constp(v)) error("vset: immutable", v);
+	if (!fixp(n)) expect("vset", "fixnum", n);
+	i = fixval(n);
+	if (i >= veclen(v)) {
+		error("vset: index out of range", n);
+	}
+	vector(v)[i] = r;
+}
+
+full subvec(full v, full n0, full n1) {
+	full	k, k0, k1, i, j, n, *v0, *v1;
+
+	if (!vectorp(v)) expect("subvec", "vector", v);
+	if (!fixp(n0)) expect("subvec", "fixnum", n0);
+	if (!fixp(n1)) expect("subvec", "fixnum", n1);
+	k0 = fixval(n0);
+	k1 = fixval(n1);
+	if (k0 > k1 || k1 > veclen(v)) {
+		error("subvec: invalid range", cons(n0, cons(n1, NIL)));
+	}
+	k = k1 - k0;
+	n = mkvec(k);
+	j = 0;
+	v0 = vector(v);
+	v1 = vector(n);
+	for (i=k0; i<k1; i++) {
+		v1[j] = v0[i];
+		j++;
+	}
+	return n;
+}
+@
+
+Inline functions, file I/O
+
+<<ls9 impl>>=
+full existsp(char *s) {
+	FILE	*f;
+
+	f = fopen(s, "r");
+	if (f != NULL) fclose(f);
+	return NULL == f? NIL: TRUE;
+}
+
+full openfile(full x, int mode) {
+	full	p = NIL;
+
+	switch (mode) {
+	case 0:
+		p = open_inport((char *) string(x));
+		break;
+	case 1:
+		p = open_outport((char *) string(x), 0);
+		break;
+	case 2:
+		p = open_outport((char *) string(x), 1);
+		break;
+	}
+	if (NIL == p) {
+		if (0 == mode) {
+			error("open-infile: cannot open", x);
+		} else {
+			error("open-outfile: cannot open", x);
+		}
+	}
+	return mkport(p, 0 == mode? T_INPORT: T_OUTPORT);
+}
+
+full b_readc(full p, int rej) {
+	full	pp;
+	int	c;
+
+	pp = Inport;
+	if (p != pp) set_inport(p);
+	c = readc();
+	if (rej) rejectc(c);
+	if (p != pp) set_inport(pp);
+	if (EOF == c) return EOFMARK;
+	return mkchar(c);
+}
+
+full b_read(full ps) {
+	full	pp, n;
+
+	if (stringp(ps)) {
+		Instr = (char *) string(ps);
+		Rejected = -1;
+		n = xread();
+		Instr = NULL;
+		if (Readerr) return mkstr(Readerr, strlen(Readerr));
+		return cons(n, NIL);
+	}
+	ps = portno(ps);
+	pp = Inport;
+	if (ps != pp) set_inport(ps);
+	n = xread();
+	if (ps != pp) set_inport(pp);
+	return n;
+}
+
+void b_prin(full x, full p, full sl) {
+	full	pp;
+
+	pp = Outport;
+	if (p != pp) set_outport(p);
+	prex(sl, x, (int)0);
+	if (p != pp) set_outport(pp);
+}
+
+full format(full x) {
+	full	n;
+
+	Outstr = mkstr(NULL, 1000);
+	Outmax = 1000;
+	Outptr = 0;
+	prex(1, x, 0);
+	n = mkstr(NULL, Outptr);
+	memcpy(string(n), string(Outstr), Outptr+1);
+	Outstr = NIL;
+	return n;
+}
+
+void b_writec(int c, full p) {
+	full	pp;
+
+	pp = Outport;
+	if (p != pp) set_outport(p);
+	writec(c);
+	if (p != pp) set_outport(pp);
+}
+
+void b_rename(full old, full new) {
+	if (!stringp(old)) expect("rename", "string", old);
+	if (!stringp(new)) expect("rename", "string", new);
+	if (rename((char *) string(old), (char *) string(new)) < 0)
+		error("rename: cannot rename",
+			cons(old, cons(new, NIL)));
+}
+@
+
+Inline functions, lists
+
+<<ls9 impl>>=
+full lconc(full x) {
+	full	p, q, n, m;
+	int	k;
+
+	if (NIL == cdr(x)) return car(x);
+	protect(n = cons(NIL, NIL));
+	k = 0;
+	for (p = x; cdr(p) != NIL; p = cdr(p)) {
+		if (NIL == car(p)) continue;
+		for (q = car(p); q != NIL; q = cdr(q)) {
+			if (!pairp(q))
+				expect("conc", "list", car(p));
+			if (k != 0) {
+				m = cons(NIL, NIL);
+				cdr(n) = m;
+				n = cdr(n);
+			}
+			car(n) = car(q);
+			k++;
+		}
+	}
+	m = unprot(1);
+	if (0 == k) return car(p);
+	cdr(n) = car(p);
+	return m;
+}
+
+full nlconc(full x) {
+	full	p, q;
+
+	while (pairp(cdr(x)) && NIL == car(x)) x = cdr(x);
+	if (NIL == cdr(x)) return car(x);
+	for (p = x; cdr(p) != NIL; p = cdr(p)) {
+		if (NIL == car(p)) continue;
+		if (constp(car(p))) error("nconc: immutable", car(p));
+		for (q = car(p); cdr(q) != NIL; q = cdr(q)) {
+			if (!pairp(q))
+				expect("nconc", "list", car(p));
+		}
+		while (pairp(cdr(p)) && NIL == cadr(p))
+			p = cdr(p);
+		if (NIL == cdr(p)) break;
+		cdr(q) = cadr(p);
+	}
+	return car(x);
+}
+@
+
+Inline functions, type conversion
+
+<<ls9 impl>>=
+full b_symbol(full x) {
+	full	y, n, k;
+
+	y = findsym((char *) string(x));
+	if (y != NIL) return y;
+	/*
+	 * Cannot pass content to mksym(), because
+	 * string(x) may move during GC.
+	 */
+	k = stringlen(x);
+	n = mksym("", k-1);
+	memcpy(symname(n), string(x), k);
+	return intern(n);
+}
+
+full b_symname(full x) {
+	full    n, k;
+
+	/*
+	 * Cannot pass name to mkstr(), because
+	 * symname(x) may move during GC.
+	*/
+	k = symlen(x);
+	n = mkstr(NULL, k-1);
+	Tag[n] |= CONST_TAG;
+	memcpy(string(n), symname(x), k);
+	return n;
+}
+
+full liststr(full x) {
+	full	n, v, k;
+	byte	*s;
+
+	k = 0;
+	for (n = x; n != NIL; n = cdr(n)) {
+		k++;
+	}
+	v = mkstr(NULL, k);
+	s = string(v);
+	for (n = x; n != NIL; n = cdr(n)) {
+		if (atomp(n)) error("liststr: dotted list", x);
+		if (!charp(car(n))) expect("liststr", "char", car(n));
+		*s = (byte)charval(car(n));
+		s++;
+	}
+	return v;
+}
+
+full listvec(full x, int veclit) {
+	full	n, v, k, *p;
+	char	*msg;
+
+	msg = veclit? "vector literal contains a dot":
+		      "listvec: dotted list";
+	k = 0;
+	for (n = x; n != NIL; n = cdr(n)) {
+		k++;
+	}
+	if (0 == k) return Nullvec;
+	v = mkvec(k);
+	if (veclit) tag(v) |= CONST_TAG;
+	p = vector(v);
+	for (n = x; n != NIL; n = cdr(n)) {
+		if (atomp(n)) error(msg, x);
+		*p = car(n);
+		p++;
+	}
+	return v;
+}
+
+full strlist(full x) {
+	full	a, new, k, i;
+
+	k = stringlen(x) - 1;
+	if (0 == k) return NIL;
+	protect(a = cons(NIL, NIL));
+	for (i=0; i<k; i++) {
+		new = mkchar(string(x)[i]);
+		car(a) = new;
+		if (i < k-1) {
+			new = cons(NIL, NIL);
+			cdr(a) = new;
+			a = cdr(a);
+		}
+	}
+	return unprot(1);
+}
+
+full veclist(full x) {
+	full	a, new, k, i;
+
+	k = veclen(x);
+	if (0 == k) return NIL;
+	protect(a = cons(NIL, NIL));
+	for (i=0; i<k; i++) {
+		car(a) = vector(x)[i];
+		if (i < k-1) {
+			new = cons(NIL, NIL);
+			cdr(a) = new;
+			a = cdr(a);
+		}
+	}
+	return unprot(1);
+}
+
+full numstr(full x, full r) {
+	char	*p;
+
+	if (r < 2 || r > 36) {
+		error("numstr: bad radix", mkfix(r));
+	}
+	/* CAST */
+	p = ntoa((ifull)fixval(x), r);
+	return mkstr(p, strlen(p));
+}
+
+full strnum(char *s, full r) {
+	if (r < 2 || r > 36) {
+		error("strnum: bad radix", mkfix(r));
+	}
+	return scanfix(s, r, 0);
+}
+@
+
+Inline functions, misc
+
+<<ls9 impl>>=
+full b_gc(void) {
+	full	n;
+
+	gcv();
+	n = cons(mkfix(NVCELLS-Freevec), NIL);
+	protect(n);
+	n = mkfix(length(Freelist));
+	return cons(n, unprot(1));
+}
+
+full gensym(void) {
+	static int	id = 0;
+	char		b[100];
+
+	id++;
+	sprintf(b, "G%d", id);
+	return mksym(b, strlen(b));
+}
+
+full untag(full x) {
+	if (specialp(x)) return x;
+	if (tag(x) & VECTOR_TAG) return NIL;
+	if (closurep(x)) return cdr(cadddr(x));
+	return cdr(x);
+}
+@

@@ -1,0 +1,49 @@
+
+<<ls9 globals>>=
+volatile int	Intr = 0;
+int	Quiet = 0;
+@
+
+<<ls9 impl>>=
+void kbdintr(int sig) {
+	Run = 0;
+	Intr = 1;
+	Mxlev = -1;
+}
+
+void initrts(void) {
+	Rts = NIL;
+	Rts = mkvec(CHUNKSIZE);
+	Sz = CHUNKSIZE;
+	Sp = NIL;
+	Fp = NIL;
+}
+
+void repl(void) {
+	full	x;
+
+	if (setjmp(Restart) && Quiet)
+		exit(EXIT_FAILURE);
+	if (!Quiet) signal(SIGINT, kbdintr);
+	for (;;) {
+		reset_stdports();
+		clrtrace();
+		initrts();
+		bindset(S_errtag, NIL);
+		Protected = NIL;
+		Run = 0;
+		Intr = 0;
+		if (!Quiet) {
+			prints("* ");
+			flush();
+		}
+		x = xread();
+		if (EOFMARK == x && !Intr) break;
+		Mxlev = 0;
+		x = eval(x, 0);
+		bindset(S_starstar, x);
+		print(x);
+	}
+	if (!Quiet) nl();
+}
+@

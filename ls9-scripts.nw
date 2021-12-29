@@ -1,0 +1,23 @@
+
+CHMOD='chmod 0555' nofake.sh -Rls9-dump-image.sh \
+    ls9.nw ls9-dump-image.nw -ols9-dump-image.sh
+
+<<dump-image.sh>>=
+#!/bin/sh
+set -eu
+rm -f '<<IMAGEFILE>>'
+echo '(dump-image "<<IMAGEFILE>>")' | ./ls9 -q
+@
+
+<<archive.sh>>=
+#!/bin/sh
+set -eu
+tar cf - * | gzip -c9 >$A
+@
+
+<<release.sh>>=
+#!/bin/sh
+set -eu
+cd ..; tar -cvf - `cat lisp9/_nodist` lisp9 | gzip -9c >$R
+mv ../$R .
+@

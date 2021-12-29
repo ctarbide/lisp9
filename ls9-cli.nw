@@ -1,0 +1,161 @@
+
+Command line interface
+
+<<ls9 globals>>=
+full	Argv = NIL;
+@
+
+<<ls9 impl>>=
+void usage(void) {
+	prints("Usage: ls9 [-Lhqv?] [-i file | -] [-l file]\n");
+	prints("           [-- argument ... | file argument ...]\n");
+}
+
+void longusage(void) {
+	nl();
+	usage();
+	prints(	"\n"
+		"-h         print help (also -v, -?)\n"
+		"-L         print terms of use\n"
+		"-i file    restart image from file (default: ");
+	prints(	IMAGEFILE);
+	prints(	")\n"
+		"-i -       compile initial image from sources (");
+	prints(	IMAGESRC);
+	prints(	")\n"
+		"           (-i must be the first option!)\n");
+	prints(	"-l file    load program from file, can be repeated\n"
+		"-q         quiet (no banner, no prompt, exit on errors)\n"
+		"-- args    bind remaining arguments to (cmdline)\n"
+		"file args  run program, args in (cmdline), implies -q\n"
+		"\n");
+	exit(EXIT_SUCCESS);
+}
+
+void terms(void) {
+	nl();
+	prints(	"LISP9 ");
+	prints(VERSION);
+	prints(	" by Nils M Holm, 2018,2019\n\n"
+		"This program is in the public domain. In countries\n"
+		"where the concept of the public domain does not exist,\n"
+		"the Creative Commons Zero (CC0) license applies.\n"
+		"See: https://creativecommons.org/publicdomain/zero/1.0/");
+	nl();
+	nl();
+	exit(EXIT_SUCCESS);
+}
+
+char *cmdarg(char *s) {
+	if (NULL == s) {
+		usage();
+		exit(EXIT_FAILURE);
+	}
+	return s;
+}
+
+full argvec(char **argv) {
+	int	i;
+	full	a, n;
+
+	if (NULL == argv[0]) return NIL;
+	a = cons(NIL, NIL);
+	protect(a);
+	for (i = 0; argv[i] != NULL; i++) {
+		n = mkstr(argv[i], strlen(argv[i]));
+		car(a) = n;
+		if (argv[i+1] != NULL) {
+			n = cons(NIL, NIL);
+			cdr(a) = n;
+			a = cdr(a);
+		}
+	}
+	return unprot(1);
+}
+
+/* hint compiler about clobbered variables
+ */
+int setjmp_wrap(jmp_buf env)
+{
+	return setjmp(env);
+}
+
+int main(int argc, char **argv) {
+	int	i, j, k, usrimg, doload;
+	char	*s;
+	char	*imgfile;
+
+	imgfile = IMAGEFILE;
+	usrimg = 0;
+	doload = 1;
+	if (setjmp_wrap(Restart) != 0) exit(EXIT_FAILURE);
+	init();
+	i = 1;
+	if (argc > 2 && strcmp(argv[1], "-i") == 0) {
+		imgfile = argv[2];
+		i = 3;
+		usrimg = 1;
+	}
+	if (existsp(imgfile) != NIL) {
+		s = loadimg(imgfile);
+		if (s != NULL) fatal(s);
+		bindset(S_imagefile,
+			mkstr(imgfile, strlen(imgfile)));
+	}
+	else if (usrimg && strcmp(imgfile, "-") != 0) {
+		fatal("cannot open image file");
+	}
+	else {
+		if (setjmp_wrap(Restart) != 0)
+			fatal("could not load library");
+		loadfile(IMAGESRC);
+	}
+	if (setjmp_wrap(Restart) != 0) exit(EXIT_FAILURE);
+	for (; i<argc; i++) {
+		if (argv[i][0] != '-') break;
+		if ('-' == argv[i][1]) {
+			doload = 0;
+			break;
+		}
+		/* CAST */
+		k = (int)strlen(argv[i]);
+		for (j=1; j<k; j++) {
+			switch (argv[i][j]) {
+			case '?':
+			case 'h':
+			case 'v':
+				longusage();
+				break;
+			case 'L':
+				terms();
+				break;
+			case 'l':
+				i++;
+				loadfile(cmdarg(argv[i]));
+				/* CAST */
+				j = (int)strlen(argv[i]);
+				break;
+			case 'q':
+				Quiet = 1;
+				break;
+			default:
+				usage();
+				exit(EXIT_FAILURE);
+			}
+		}
+	}
+	bindset(S_quiet, Quiet? TRUE: NIL);
+	if (!Quiet && NULL == argv[i]) {
+		prints("LISP9 "); prints(VERSION); nl();
+	}
+	Argv = NULL == argv[i]? NIL: argvec(&argv[i+1]);
+	start();
+	if (setjmp_wrap(Restart) != 0) exit(EXIT_FAILURE);
+	if (doload && argv[i] != NULL) {
+		loadfile(argv[i]);
+		exit(EXIT_SUCCESS);
+	}
+	repl();
+	return 0;
+}
+@

@@ -1,0 +1,240 @@
+
+Heap image I/O
+
+<<ls9 definitions>>=
+struct imghdr {
+	char	magic[5];		/* "LISP9"	*/
+	char	version[8];		/* "yyyymmdd"	*/
+	char	full_size[1];		/* size + '0'	*/
+#if FULL_BITS == 32
+	char	byte_order[4];		/* e.g. "4321"	*/
+	char	pad[14];
+#elif FULL_BITS == 64
+	char	byte_order[8];		/* e.g. "87654321"	*/
+	char	pad[10];
+#else
+#error unknown FULL_BITS
+#endif
+};
+@
+
+<<ls9 globals>>=
+full	*Imagevars[] = {
+		&Freelist, &Freevec, &Symbols, &Symhash, &Symptr,
+		&Rts, &Glob, &Macros, &Obhash, &Obarray, &Obmap, NULL };
+@
+
+<<ls9 impl>>=
+void loadfile(char *s) {
+	full	ldport, rdport, oline, x;
+
+	ldport = open_inport(s);
+	if (NIL == ldport) {
+		error("load: cannot open file",
+			mkstr(s, strlen(s)));
+	}
+	lock_port(ldport);
+	rdport = Inport;
+	oline = Line;
+	Files = cons(mkstr(s, strlen(s)), Files);
+	Line = 1;
+	begin_rec();
+	for (;;) {
+		set_inport(ldport);
+		x = xread();
+		set_inport(rdport);
+		if (EOFMARK == x) break;
+		eval(x, 0);
+	}
+	end_rec();
+	Files = cdr(Files);
+	Line = oline;
+	close_port(ldport);
+}
+
+void load(full x) {
+	char	path[TOKLEN+1];
+
+	if (!stringp(x))
+		expect("load", "string", x);
+	if (stringlen(x) > TOKLEN)
+		error("load: path too long", x);
+	strcpy(path, (char *) string(x));
+	loadfile(path);
+}
+
+char *xfwrite(void *buf, full siz, full n, FILE *f) {
+	if (fwrite(buf, siz, n, f) != n) {
+		return "image file write error";
+	}
+	return NULL;
+}
+
+void saveimg(char *path) {
+	char	b[TOKLEN+1], *p;
+
+	if (strlen(path)+7 >= TOKLEN)
+		error("image path too long", UNDEF);
+	strcpy(b, path);
+	p = strrchr(b, '.');
+	if (NULL == p) p = b+strlen(b);
+	*p = 0;
+	strcat(b, ".oimage");
+	remove(b);
+	rename(path, b);
+}
+
+char *dumpimg(char *path) {
+	FILE		*f;
+	full		n, **v;
+	int		i;
+	struct imghdr	m;
+	char		*s;
+
+	saveimg(path);
+	f = fopen(path, "wb");
+	if (NULL == f) return "cannot create image file";
+	memset(&m, '_', sizeof(m));
+	memcpy(m.magic, "LISP9", sizeof(m.magic));
+	memcpy(m.version, VERSION, sizeof(m.version));
+	m.full_size[0] = sizeof(full)+'0';
+#if FULL_BITS == 32
+	n = UINT32_C(0x31323334);
+	memcpy(m.byte_order, &n, FULL_BYTES);
+#elif FULL_BITS == 64
+	n = UINT64_C(0x3132333435363738);
+	memcpy(m.byte_order, &n, FULL_BYTES);
+#else
+#error unknown FULL_BITS
+#endif
+	if ((s = xfwrite(&m, sizeof(m), 1, f)) != NULL) {
+		fclose(f);
+		return s;
+	}
+	i = NNODES;
+	if ((s = xfwrite(&i, sizeof(int), 1, f)) != NULL) {
+		fclose(f);
+		return s;
+	}
+	i = NVCELLS;
+	if ((s = xfwrite(&i, sizeof(int), 1, f)) != NULL) {
+		fclose(f);
+		return s;
+	}
+	i = 0;
+	v = Imagevars;
+	while (v && v[i]) {
+		if ((s = xfwrite(v[i], sizeof(full), 1, f)) != NULL) {
+			fclose(f);
+			return s;
+		}
+		i++;
+	}
+	if (	fwrite(Car, 1, sizeof(full) * NNODES, f)
+		 != sizeof(full) * NNODES ||
+		fwrite(Cdr, 1, sizeof(full) * NNODES, f)
+		 != sizeof(full) * NNODES ||
+		fwrite(Tag, 1, NNODES, f) != NNODES||
+		fwrite(Vectors, 1, sizeof(full) * NVCELLS, f)
+		 != sizeof(full) * NVCELLS)
+	{
+		fclose(f);
+		return "image dump failed";
+	}
+	fclose(f);
+	return NULL;
+}
+
+char *xfread(void *buf, full siz, full n, FILE *f) {
+	if (fread(buf, siz, n, f) != n) {
+		return "image file read error";
+	}
+	return NULL;
+}
+
+char *loadimg(char *path) {
+	FILE		*f;
+	full		n, **v;
+	int		i;
+	struct imghdr	m;
+	int		image_nodes, image_vfulls;
+	char		*s;
+
+	f = fopen(path, "rb");
+	if (NULL == f)
+		return "could not open file";
+	if ((s = xfread(&m, sizeof(m), 1, f)) != NULL)
+		return s;
+	if (memcmp(m.magic, "LISP9", sizeof(m.magic))) {
+		fclose(f);
+		return "imghdr match failed";
+	}
+	if (memcmp(m.version, VERSION, sizeof(m.version))) {
+		fclose(f);
+		return "wrong image version";
+	}
+	if (m.full_size[0]-'0' != sizeof(full)) {
+		fclose(f);
+		return "wrong full size";
+	}
+	memcpy(&n, m.byte_order, sizeof(full));
+#if FULL_BITS == 32
+	if (n != UINT32_C(0x31323334)) {
+		fclose(f);
+		return "wrong byte order";
+	}
+#elif FULL_BITS == 64
+	if (n != UINT64_C(0x3132333435363738)) {
+		fclose(f);
+		return "wrong byte order";
+	}
+#else
+#error unknown FULL_BITS
+#endif
+	memset(Tag, 0, NNODES);
+	if ((s = xfread(&image_nodes, sizeof(int), 1, f)) != NULL)
+		return s;
+	if ((s = xfread(&image_vfulls, sizeof(int), 1, f)) != NULL)
+		return s;
+	if (image_nodes != NNODES) {
+		fclose(f);
+		return "wrong node pool size";
+	}
+	if (image_vfulls != NVCELLS) {
+		fclose(f);
+		return "wrong vector pool size";
+	}
+	v = Imagevars;
+	i = 0;
+	while (v && v[i]) {
+		if ((s = xfread(v[i], sizeof(full), 1, f)) != NULL)
+			return s;
+		i++;
+	}
+	if (	(fread(Car, 1, sizeof(full) * NNODES, f)
+		  != sizeof(full) * NNODES ||
+		 fread(Cdr, 1, sizeof(full) * NNODES, f)
+		  != sizeof(full) * NNODES ||
+		 fread(Tag, 1, NNODES, f) != NNODES ||
+		 fread(Vectors, 1, sizeof(full) * NVCELLS, f)
+		  != sizeof(full) * NVCELLS ||
+		 fgetc(f) != EOF))
+	{
+		fclose(f);
+		return "wrong file size";
+	}
+	fclose(f);
+	return NULL;
+}
+
+void dump_image(full s) {
+	char	*rc;
+
+	rc = dumpimg((char *) string(s));
+	if (rc != NULL) {
+		remove((char *) string(s));
+		error(rc, s);
+	}
+	bindset(S_imagefile, s);
+}
+@

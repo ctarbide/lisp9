@@ -1,0 +1,377 @@
+
+Compiler, closure conversion
+
+<<ls9 globals>>=
+full	I_a, I_e;
+
+full	Env = NIL,
+	Envp = NIL;
+
+full	I_closure;
+
+full	I_arg, I_ref;
+@
+
+<<ls9 impl>>=
+full set_union(full a, full b) {
+	full	n;
+
+	a = reverse(a);
+	protect(a);
+	protect(n = b);
+	while (pairp(a)) {
+		if (memq(car(a), b) == NIL)
+			n = cons(car(a), n);
+		car(Protected) = n;
+		a = cdr(a);
+	}
+	if (a != NIL && memq(a, b) == NIL)
+		n = cons(a, n);
+	unprot(2);
+	return n;
+}
+
+full freevars(full x, full e) {
+	full	n, u, a;
+	int	lam;
+
+	lam = 0;
+	if (memq(x, e) != NIL) {
+		return NIL;
+	}
+	else if (symbolp(x)) {
+		return cons(x, NIL);
+	}
+	else if (!pairp(x)) {
+		return NIL;
+	}
+	else if (car(x) == S_quote) {
+		return NIL;
+	}
+	else if (car(x) == S_apply ||
+		 car(x) == S_prog ||
+		 car(x) == S_if ||
+		 car(x) == S_ifstar ||
+		 car(x) == S_setq
+	) {
+		x = cdr(x);
+	}
+	else if (car(x) == S_def ||
+		 car(x) == S_macro
+	) {
+		x = cddr(x);
+	}
+	else if (subrp(car(x))) {
+		x = cdr(x);
+	}
+	else if (car(x) == S_lambda) {
+		protect(e);
+		a = flatargs(cadr(x));
+		protect(a);
+		n = set_union(a, e);
+		protect(n);
+		e = n;
+		x = cddr(x);
+		lam = 1;
+	}
+	protect(u = NIL);
+	while (pairp(x)) {
+		n = freevars(car(x), e);
+		protect(n);
+		u = set_union(u, n);
+		unprot(1);;
+		car(Protected) = u;
+		x = cdr(x);
+	}
+	n = unprot(1);
+	if (lam) e = unprot(3);
+	return n;
+}
+
+full posq(full x, full a) {
+	full	n;
+
+	n = 0;
+	for (; a != NIL; a = cdr(a)) {
+		if (car(a) == x) return n;
+		n++;
+	}
+	return NIL;
+}
+
+full initmap(full fv, full e, full a) {
+	full	m, n, p, i, j;
+
+	protect(m = NIL);
+	i = 0;
+	while (fv != NIL) {
+		p = cons(car(fv), NIL);
+		protect(p);
+		n = mkfix(i);
+		p = cons(n, p);
+		car(Protected) = p;
+		if ((j = posq(car(fv), a)) != NIL) {
+			n = mkfix(j);
+			p = cons(n, p);
+			unprot(1);
+			p = cons(I_a, p);
+		}
+		else if ((j = posq(car(fv), e)) != NIL) {
+			n = mkfix(j);
+			p = cons(n, p);
+			unprot(1);
+			p = cons(I_e, p);
+		}
+		else {
+			error("undefined symbol", car(fv));
+		}
+		m = cons(p, m);
+		car(Protected) = m;
+		i++;
+		fv = cdr(fv);
+	}
+	return nreverse(unprot(1));
+}
+
+full lastpair(full x) {
+	if (NIL == x) return NIL;
+	while (cdr(x) != NIL)
+		x = cdr(x);
+	return x;
+}
+
+void newvar(full x) {
+	full	n;
+
+	if (memq(x, Env) != NIL) return;
+	if (NIL == Envp) Envp = lastpair(Env);
+	n = cons(x, NIL);
+	cdr(Envp) = n;
+	Envp = n;
+}
+
+void newvars(full x) {
+	while (x != NIL) {
+		newvar(car(x));
+		x = cdr(x);
+	}
+}
+
+full mapconv(full x, full e, full a) {
+	full	n, new;
+
+	protect(n = NIL);
+	while (pairp(x)) {
+		new = cconv(car(x), e, a);
+		n = cons(new, n);
+		car(Protected) = n;
+		x = cdr(x);
+	}
+	return nreverse(unprot(1));
+}
+
+full lamconv(full x, full e, full a) {
+	full	cl, fv, args, m;
+
+	fv = freevars(x, NIL);
+	protect(fv);
+	newvars(fv);
+	args = flatargs(cadr(x));
+	protect(args);
+	m = initmap(fv, e, a);
+	protect(m);
+	cl = mapconv(cddr(x), fv, args);
+	cl = cons(m, cl);
+	cl = cons(cadr(x), cl);
+	cl = cons(I_closure, cl);
+	unprot(3);
+	return cl;
+}
+
+int contains(full a, full x) {
+	if (a == x) return 1;
+	if (pairp(a) && (contains(car(a), x) || contains(cdr(a), x)))
+		return 1;
+	return 0;
+}
+
+int liftable(full x) {
+	return !contains(x, S_setq);
+}
+
+full liftnames(full m) {
+	#define name cadddr
+	full	a, n;
+
+	protect(a = NIL);
+	while (m != NIL) {
+		if (caar(m) == I_a) {
+			n = name(car(m));
+			a = cons(n, a);
+			car(Protected) = a;
+		}
+		m = cdr(m);
+	}
+	return nreverse(unprot(1));
+	#undef name
+}
+
+full liftargs(full m) {
+	#define source	cadr
+	full	a, n;
+
+	protect(a = NIL);
+	while (m != NIL) {
+		if (caar(m) == I_a) {
+			n = source(car(m));
+			n = cons(n, NIL);
+			n = cons(caar(m) == I_a? I_arg: I_ref, n);
+			a = cons(n, a);
+			car(Protected) = a;
+		}
+		m = cdr(m);
+	}
+	return nreverse(unprot(1));
+	#undef source
+}
+
+full appconv(full x, full e, full a) {
+	full	fn, as, fv, fnargs, m, n, lv, vars, cv;
+
+	fn = car(x);
+	as = cdr(x);
+	fv = freevars(fn, NIL);
+	protect(fv);
+	fnargs = flatargs(cadr(fn));
+	protect(fnargs);
+	newvars(fv);
+	m = initmap(fv, e, a);
+	protect(m);
+	as = mapconv(as, e, a);
+	protect(as);
+	n = liftargs(m);
+	as = nconc(n, as);
+	car(Protected) = as;
+	lv = liftnames(m);
+	protect(lv);
+	vars = conc(lv, cadr(fn));
+	protect(vars);
+	cv = set_union(lv, fnargs);
+	cadr(Protected) = cv;
+	fn = mapconv(cddr(fn), e, cv);
+	fn = cons(NIL, fn);
+	fn = cons(vars, fn);
+	fn = cons(I_closure, fn);
+	unprot(6);
+	return cons(fn, as);
+}
+
+full defconv(full x, full e, full a) {
+	full	n, m;
+
+	newvar(cadr(x));
+	n = cons(cconv(caddr(x), e, a), NIL);
+	protect(n);
+	m = mkfix(posq(cadr(x), e));
+	protect(m);
+	m = cons(I_ref, cons(m, cons(cadr(x), NIL)));
+	unprot(2);
+	return cons(S_setq, cons(m, n));
+}
+
+full cconv(full x, full e, full a) {
+	full	n;
+
+	if (	pairp(x) &&
+		(S_apply == car(x)  ||
+		 S_if == car(x)     ||
+		 S_ifstar == car(x) ||
+		 S_prog == car(x)   ||
+		 S_setq == car(x)   ||
+		 subrp(car(x))))
+	{
+		return cons(car(x), mapconv(cdr(x), e, a));
+	}
+	if ((n = posq(x, a)) != NIL) {
+		return cons(I_arg, cons(mkfix(n), NIL));
+	}
+	if ((n = posq(x, e)) != NIL) {
+		Tmp = mkfix(n);
+		n = cons(I_ref, cons(Tmp, cons(x, NIL)));
+		Tmp = NIL;
+		return n;
+	}
+	if (symbolp(x)) {
+		error("undefined symbol", x);
+		return NIL;
+	}
+	if (atomp(x)) {
+		return x;
+	}
+	if (S_quote == car(x)) {
+		return x;
+	}
+	if (	pairp(car(x)) &&
+		S_lambda == caar(x) &&
+		liftable(car(x)))
+	{
+		return appconv(x, e, a);
+	}
+	if (S_lambda == car(x)) {
+		return lamconv(x, e, a);
+	}
+	if (S_def == car(x)) {
+		return defconv(x, e, a);
+	}
+	if (S_macro == car(x)) {
+		return cons(car(x),
+			    cons(cadr(x),
+				 mapconv(cddr(x), e, a)));
+	}
+	return mapconv(x, e, a);
+}
+
+full carof(full a) {
+	full	n;
+
+	protect(n = NIL);
+	while (a != NIL) {
+		n = cons(caar(a), n);
+		car(Protected) = n;
+		a = cdr(a);
+	}
+	unprot(1);
+	return nreverse(n);
+}
+
+full zipenv(full vs, full oe) {
+	full	n, b;
+
+	protect(n = NIL);
+	while (vs != NIL) {
+		if (NIL == oe) {
+			b = cons(car(vs), cons(UNDEF, NIL));
+		}
+		else {
+			b = car(oe);
+			oe = cdr(oe);
+		}
+		n = cons(b, n);
+		car(Protected) = n;
+		vs = cdr(vs);
+	}
+	return nreverse(unprot(1));
+}
+
+full clsconv(full x) {
+	full	n;
+
+	Env = carof(Glob);
+	Envp = NIL;
+	if (NIL == Env) Env = cons(UNDEF, NIL);
+	n = cconv(x, Env, NIL);
+	protect(n);
+	Glob = zipenv(Env, Glob);
+	return unprot(1);
+}
+@

@@ -1,0 +1,55 @@
+
+Some useful list functions
+
+<<ls9 macros>>=
+#define reverse(n) reconc((n), NIL)
+#define nreverse(n) nreconc((n), NIL)
+@
+
+<<ls9 impl>>=
+full reconc(full n, full m) {
+	while (n != NIL) {
+		if (atomp(n)) error("reconc: dotted list", n);
+                m = cons(car(n), m);
+		n = cdr(n);
+        }
+        return m;
+}
+
+full nreconc(full n, full m) {
+	full	h;
+
+	while (n != NIL) {
+		if (atomp(n)) error("nreconc: dotted list", n);
+		h = cdr(n);
+		cdr(n) = m;
+		m = n;
+		n = h;
+	}
+	return m;
+}
+
+full conc(full a, full b) {
+	full	n;
+
+	a = reverse(a);
+	protect(a);
+	n = b;
+	while (a != NIL) {
+		n = cons(car(a), n);
+		a = cdr(a);
+	}
+	unprot(1);
+	return n;
+}
+
+full nconc(full a, full b) {
+	full	n;
+
+	n = a;
+	if (NIL == a) return b;
+	while (cdr(a) != NIL) a = cdr(a);
+	cdr(a) = b;
+	return n;
+}
+@

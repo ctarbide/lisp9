@@ -1,0 +1,201 @@
+
+References:
+
+- https://stackoverflow.com/questions/44401965/how-to-get-size-max-in-c89
+- https://stackoverflow.com/questions/34580472/alternative-to-ssize-t-on-posix-unconformant-systems
+- https://www.cplusplus.com/reference/cinttypes/
+- https://www.alphacodingskills.com/c/c-inttypes-h.php
+- https://stackoverflow.com/questions/15610053/correct-printf-format-specifier-for-size-t-zu-or-iu
+- https://stackoverflow.com/questions/2524611/how-can-one-print-a-size-t-variable-portably-using-the-printf-family
+
+Minimal includes and compilers handling.
+
+<<size_t_aux.h>>=
+#include <ctype.h>
+#include <limits.h>
+#include <inttypes.h>
+#ifdef _MSC_VER
+#if (_MSC_VER >= 1100 && _MSC_VER < 1900)
+/* MSVC++  5.0, _MSC_VER == 1100, Visual Studio 5.0
+ * MSVC++ 14.0, _MSC_VER == 1900, Visual Studio 2015
+ * See also: https://github.com/MicrosoftDocs/cpp-docs/issues/1490
+ */
+#define __PRIuSIZE "Iu"
+#define __PRIxSIZE "Ix"
+#define __PRIXSIZE "IX"
+#define __PRIdSIZE "Id"
+#define __PRIiSIZE "Ii"
+#else /* _MSC_VER >= 1900 */
+#define __PRIuSIZE "zu"
+#define __PRIxSIZE "zx"
+#define __PRIXSIZE "zX"
+#define __PRIdSIZE "zd"
+#define __PRIiSIZE "zi"
+#endif
+#else /* not _MSC_VER */
+#define __PRIuSIZE "zu"
+#define __PRIxSIZE "zx"
+#define __PRIXSIZE "zX"
+#define __PRIdSIZE "zd"
+#define __PRIiSIZE "zi"
+#endif
+@
+
+Nice tip learnt from [how-to-get-size-max-in-c89].
+
+<<size_t_aux.h>>=
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t)(-1))
+#endif
+@
+
+Char/byte sanity check.
+
+<<size_t_aux.h>>=
+#if CHAR_MAX != 127
+#error platform has exotic char type
+#endif
+#if CHAR_MIN != -128
+#error platform has exotic char type
+#endif
+#if UCHAR_MAX != 255
+#error platform has exotic unsigned char type
+#endif
+@
+
+UINT_MAX?
+
+<<size_t_aux.h>>=
+#if SIZE_MAX == UINT_MAX
+#define SSIZE_MIN	INT_MIN
+#define SSIZE_MAX	INT_MAX
+#define PRIz "i"
+#if (INT_MAX>>16) == SHRT_MAX
+#define halfsize_t	unsigned short
+#define halfssize_t	short
+#else
+#error platform has exotic INT_MAX
+#endif
+@
+
+ULONG_MAX?
+
+<<size_t_aux.h>>=
+#elif SIZE_MAX == ULONG_MAX
+#define SSIZE_MIN	LONG_MIN
+#define SSIZE_MAX	LONG_MAX
+#define PRIz "li"
+#if (LONG_MAX>>32) == INT_MAX
+#define halfsize_t	unsigned int
+#define halfssize_t	int
+#else
+#error platform has exotic LONG_MAX
+#endif
+@
+
+ULLONG_MAX?
+
+<<size_t_aux.h>>=
+#elif SIZE_MAX == ULLONG_MAX
+#define SSIZE_MIN	LLONG_MIN
+#define SSIZE_MAX	LLONG_MAX
+#define PRIz "lli"
+#if (LLONG_MAX>>32) == INT_MAX
+#define halfsize_t	unsigned int
+#define halfssize_t	int
+#else
+#error platform has exotic LLONG_MAX
+#endif
+@
+
+USHRT_MAX?
+
+<<size_t_aux.h>>=
+#elif SIZE_MAX == USHRT_MAX
+#define SSIZE_MIN	SHRT_MIN
+#define SSIZE_MAX	SHRT_MAX
+#define PRIz "i"
+#if (USHRT_MAX>>8) == UCHAR_MAX
+#define halfsize_t	unsigned char
+#define halfssize_t	signed char
+#else
+#error platform has exotic USHRT_MAX
+#endif
+@
+
+UINTMAX_MAX?
+
+<<size_t_aux.h>>=
+#elif SIZE_MAX == UINTMAX_MAX
+#define SSIZE_MIN	INTMAX_MIN
+#define SSIZE_MAX	INTMAX_MAX
+#define PRIz PRIiMAX
+#if (INTMAX_MAX>>32) == INT_MAX
+#define halfsize_t	unsigned int
+#define halfssize_t	int
+#elif (INTMAX_MAX>>16) == SHRT_MAX
+#define halfsize_t	unsigned short
+#define halfssize_t	short
+#else
+#error platform has exotic INTMAX_MAX
+#endif
+@
+
+<<size_t_aux.h>>=
+#else
+#error platform has exotic SIZE_MAX
+#endif
+@
+
+Detect bits and bytes. This is useful for preprocessor decisions, as sizeof
+cannot be used in preprocessor.
+
+<<size_t_aux.h>>=
+#if SIZE_MAX == UINT32_MAX
+#define SIZE_BITS	32
+#define SIZE_BYTES	4
+#elif SIZE_MAX == UINT64_MAX
+#define SIZE_BITS	64
+#define SIZE_BYTES	8
+#else
+#error platform has exotic SIZE_MAX
+#endif
+@
+
+A simple test program to validate.
+
+<<test.c>>=
+#include <stdio.h>
+#include <stdlib.h>
+#include "size_t_aux.h"
+int
+main(int argc, char **argv)
+{
+	printf("__PRIuSIZE:\t\t\"%s\"\n", __PRIuSIZE);
+	printf("__PRIxSIZE:\t\t\"%s\"\n", __PRIxSIZE);
+	printf("__PRIXSIZE:\t\t\"%s\"\n", __PRIXSIZE);
+	printf("__PRIdSIZE:\t\t\"%s\"\n", __PRIdSIZE);
+	printf("__PRIiSIZE:\t\t\"%s\"\n", __PRIiSIZE);
+	printf(" SHRT_MAX:\t\t%i\n",  SHRT_MAX);
+	printf("USHRT_MAX:\t\t%u\n", USHRT_MAX);
+	printf(" INT_MAX:\t\t%i\n",  INT_MAX);
+	printf("UINT_MAX:\t\t%u\n", UINT_MAX);
+	printf(" SIZE_MAX:\t\t%"__PRIuSIZE" (u)\n",  SIZE_MAX);
+	printf(" SIZE_MAX:\t\t%"__PRIxSIZE" (x)\n",  SIZE_MAX);
+	printf(" SIZE_MAX:\t\t%"__PRIXSIZE" (X)\n",  SIZE_MAX);
+	printf("SSIZE_MAX:\t\t%"__PRIdSIZE" (d)\n", SSIZE_MAX);
+	printf("SSIZE_MIN:\t\t%"__PRIdSIZE" (d)\n", SSIZE_MIN);
+	printf("SSIZE_MAX:\t\t%"__PRIiSIZE" (i)\n", SSIZE_MAX);
+	printf("SSIZE_MIN:\t\t%"__PRIiSIZE" (i)\n", SSIZE_MIN);
+	printf(" SIZE_BITS:\t\t%u\n",  SIZE_BITS);
+	printf(" SIZE_BYTES:\t\t%u\n", SIZE_BYTES);
+#if SIZE_BYTES == 4
+	printf("Using %u-bit size_t.\n", SIZE_BITS);
+#elif SIZE_BYTES == 8
+	printf("Using %u-bit size_t.\n", SIZE_BITS);
+#else
+	printf("Using unusual %u bytes for size_t.\n", SIZE_BYTES);
+#endif
+	return 0;
+}
+@

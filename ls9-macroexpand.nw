@@ -1,0 +1,168 @@
+
+Macro expander
+
+<<ls9 globals>>=
+full	Macros = NIL;
+volatile int	Mxlev = 0;
+@
+
+<<ls9 impl>>=
+void newmacro(full id, full fn) {
+	full	n, name;
+
+	if (!closurep(fn)) expect("macro", "closure", fn);
+	name = vector(Symbols)[id];
+	n = assq(name, Macros);
+	if (NIL == n) {
+		n = cons(name, fn);
+		Macros = cons(n, Macros);
+	}
+	else {
+		cdr(n) = fn;
+	}
+}
+
+full mapexp(full x, int r) {
+	full	p, n, new;
+
+	protect(x);
+	protect(n = NIL);
+	p = x;
+	while (pairp(p)) {
+		new = expand(car(p), r);
+		n = cons(new, n);
+		car(Protected) = n;
+		p = cdr(p);
+	}
+	if (p != NIL) error("dotted list in program", x);
+	n = nreverse(unprot(1));
+	unprot(1);
+	return n;
+}
+
+full zip(full a, full b) {
+	full	n, p;
+
+	protect(n = NIL);
+	while (a != NIL && b != NIL) {
+		p = cons(car(a), car(b));
+		n = cons(p, n);
+		car(Protected) = n;
+		a = cdr(a);
+		b = cdr(b);
+	}
+	unprot(1);
+	return nreverse(n);
+}
+
+full expandbody(full x) {
+	full	n, vs, as;
+
+	protect(vs = NIL);
+	protect(as = NIL);
+	while (	pairp(x) &&
+		pairp(car(x)) &&
+		(caar(x) == S_def ||
+		 caar(x) == S_defun))
+	{
+		if (caar(x) == S_def) {
+			n = car(x);
+			vs = cons(cadr(n), vs);
+			cadr(Protected) = vs;
+			n = cons(caddr(n), NIL);
+			as = cons(n, as);
+			car(Protected) = as;
+		}
+		else {
+			n = expanddef(car(x));
+			protect(n);
+			vs = cons(cadr(n), vs);
+			caddr(Protected) = vs;
+			n = cons(caddr(n), NIL);
+			as = cons(n, as);
+			cadr(Protected) = as;
+			unprot(1);
+		}
+		x = cdr(x);
+	}
+	if (NIL == vs) {
+		unprot(2);
+		return x;
+	}
+	as = car(Protected) = nreverse(as);
+	vs = cadr(Protected) = nreverse(vs);
+	n = cons(zip(vs, as), x);
+	n = cons(S_labels, n);
+	n = cons(n, NIL);
+	unprot(2);
+	return n;
+}
+
+full expanddef(full x) {
+	char	b[100];
+	full	n;
+
+	if (!pairp(cadr(x))) {
+		sprintf(b, "%s: expected signature", symname(car(x)));
+		error(b, cadr(x));
+	}
+	n = cons(cdadr(x), expandbody(cddr(x)));
+	n = cons(S_lambda, n);
+	n = cons(n, NIL);
+	n = cons(caadr(x), n);
+	n = cons(car(x) == S_defun? S_def: S_macro, n);
+	return n;
+}
+
+full expand(full x, int r) {
+	full	n, m;
+
+	if (Mxlev < 0) error("interrupted", UNDEF);
+	if (Mxlev > MXMAX)
+		error("too many levels of macro expansion", UNDEF);
+	if (atomp(x)) {
+		return x;
+	}
+	if (car(x) == S_quote) {
+		return x;
+	}
+	Mxlev++;
+	if (car(x) == S_lambda) {
+		protect(x);
+		n = mapexp(cddr(x), r);
+		n = cons(cadr(x), n);
+		n = cons(car(x), n);
+		unprot(1);
+		Mxlev--;
+		return n;
+	}
+	if (car(x) == S_defun || car(x) == S_defmac) {
+		protect(x);
+		x = expanddef(x);
+		car(Protected) = x;
+		x = expand(x, r);
+		unprot(1);
+		Mxlev--;
+		return x;
+	}
+	if (	symbolp(car(x)) &&
+		(m = assq(car(x), Macros)) != NIL)
+	{
+		protect(x);
+		n = cons(cdr(x), NIL);
+		n = cons(S_quote, n);
+		n = cons(n, NIL);
+		n = cons(cdr(m), n);
+		n = cons(S_apply, n);
+		x = eval(n, 1);
+		car(Protected) = x;
+		if (r) x = expand(x, r);
+		unprot(1);
+		Mxlev--;
+		return x;
+	}
+	x = mapexp(x, r);
+	Mxlev--;
+	return x;
+}
+@

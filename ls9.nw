@@ -1,0 +1,123 @@
+
+This is a noweb file, see tools/nofake-README.txt for more information.
+
+<<ls9 header>>=
+/*
+ * LISP9 Interpreter
+ * Nils M Holm, 2018,2019
+ * In the public domain
+ *
+ * If your country does not have a concept like the public
+ * domain, the Creative Common Zero (CC0) licence applies,
+ * see https://creativecommons.org/publicdomain/zero/1.0/
+ */
+
+#define VERSION "<<VERSION>>"
+@
+
+<<VERSION>>=
+20220101
+@
+
+<<IMAGENAME>>=
+ls9
+@
+
+<<IMAGEFILE>>=
+<<IMAGENAME>>.image
+@
+
+<<IMAGESRC>>=
+<<IMAGENAME>>.ls9
+@
+
+<<ls9 definitions>>=
+#define IMAGEFILE	"<<IMAGEFILE>>"
+#define IMAGESRC	"<<IMAGESRC>>"
+#define NNODES		262144
+#define NVCELLS		262144
+#define NPORTS		20
+#define TOKLEN		80
+#define CHUNKSIZE	1024
+#define MXMAX		2000
+#define NTRACE		10
+#define PRDEPTH		1024
+@
+
+<<ls9.c>>=
+<<ls9 header>>
+<<ls9 definitions>>
+<<ls9 macros>>
+<<ls9 prototypes>>
+<<ls9 globals>>
+<<ls9 impl>>
+@
+
+<<ls9-trace.c>>=
+<<ls9 header>>
+<<ls9 definitions>>
+<<ls9 macros>>
+<<ls9 prototypes>>
+<<ls9 trace>>
+@
+
+<<ls9 header>>=
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <limits.h>
+#include <signal.h>
+#include <setjmp.h>
+#include <unistd.h>
+#include <inttypes.h>
+
+<<size_t_aux.h>>
+
+<<ls9 full and half>>
+@
+
+Full word bits and half word bits.
+
+<<ls9 full and half>>=
+<<ls9 full is size_t>>
+/* TODO: half */
+@
+
+<<ls9 full is size_t>>=
+#define full	size_t
+#define ifull	ssize_t
+#define byte	unsigned char
+
+#define PRIuFULL __PRIuSIZE
+#define PRIxFULL __PRIxSIZE
+#define PRIXFULL __PRIXSIZE
+#define PRIdFULL __PRIdSIZE
+#define PRIiFULL __PRIiSIZE
+
+#define FULL_BITS	SIZE_BITS
+#define FULL_BYTES	SIZE_BYTES
+
+#define FULL_MAX	SIZE_MAX
+
+#define IFULL_MIN	SSIZE_MIN
+#define IFULL_MAX	SSIZE_MAX
+@
+
+<<ls9 full is unsigned int>>=
+TODO
+@
+
+<<ls9 full is unsigned long>>=
+TODO
+@
+
+<<ls9 full is unsigned long long>>=
+TODO
+@
+
+<<ls9 prototypes>>=
+#ifndef INSIDE_CPROTO
+#include "ls9_protos.h"
+#endif
+@

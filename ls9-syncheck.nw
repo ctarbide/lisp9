@@ -1,0 +1,146 @@
+
+Syntax checker
+
+<<ls9 impl>>=
+full length(full n) {
+	full	k;
+
+	for (k = 0; n != NIL; n = cdr(n))
+		k++;
+	return k;
+}
+
+void ckargs(full x, full min, full max) {
+	full	k;
+	char	buf[100];
+
+	k = length(x) - 1;
+	if (k < min || k > max) {
+		sprintf(buf, "%s: wrong number of arguments",
+			symname(car(x)));
+		error(buf, x);
+	}
+}
+
+int ckseq(full x, int top) {
+	for (; pairp(x); x = cdr(x))
+		syncheck(car(x), top);
+	return 0;
+}
+
+int ckapply(full x) {
+	ckargs(x, 2, FULL_MAX);
+	return 0;
+}
+
+int ckdef(full x, int top) {
+	ckargs(x, 2, 2);
+	if (!symbolp(cadr(x)))
+		error("def: expected symbol", cadr(x));
+	if (!top) error("def: must be at top level", x);
+	return syncheck(caddr(x), 0);
+}
+
+int ckif(full x) {
+	ckargs(x, 2, 3);
+	return ckseq(cdr(x), 0);
+}
+
+int ckifstar(full x) {
+	ckargs(x, 2, 2);
+	return ckseq(cdr(x), 0);
+}
+
+int symlistp(full x) {
+	full	p;
+
+	for (p = x; pairp(p); p = cdr(p)) {
+		if (!symbolp(car(p)))
+			return 0;
+	}
+	return symbolp(p) || NIL == p;
+}
+
+full memq(full x, full a) {
+	for (; a != NIL; a = cdr(a))
+		if (car(a) == x) return a;
+	return NIL;
+}
+
+int uniqlistp(full x) {
+	if (NIL == x) return 1;
+	while (cdr(x) != NIL) {
+		if (memq(car(x), cdr(x)) != NIL)
+			return 0;
+		x = cdr(x);
+	}
+	return 1;
+}
+
+full flatargs(full a) {
+	full	n;
+
+	protect(n = NIL);
+	while (pairp(a)) {
+		n = cons(car(a), n);
+		car(Protected) = n;
+		a = cdr(a);
+	}
+	if (a != NIL) n = cons(a, n);
+	unprot(1);
+	return nreverse(n);
+}
+
+int cklambda(full x) {
+	ckargs(x, 2, FULL_MAX);
+	if (!symlistp(cadr(x)))
+		error("lambda: invalid formals", cadr(x));
+	if (!uniqlistp(flatargs(cadr(x))))
+		error("lambda: duplicate formal", cadr(x));
+	return ckseq(cddr(x), 0);
+}
+
+int ckmacro(full x, int top) {
+	ckargs(x, 2, 2);
+	if (!symbolp(cadr(x)))
+		error("macro: expected symbol", cadr(x));
+	if (!top) error("macro: must be at top level", x);
+	return syncheck(caddr(x), 0);
+}
+
+int ckprog(full x, int top) {
+	return ckseq(cdr(x), top);
+}
+
+int ckquote(full x) {
+	ckargs(x, 1, 1);
+	return 0;
+}
+
+int cksetq(full x) {
+	ckargs(x, 2, 2);
+	if (!symbolp(cadr(x)))
+		error("setq: expected symbol", cadr(x));
+	return ckseq(cddr(x), 0);
+}
+
+int syncheck(full x, int top) {
+	full	p;
+
+	if (atomp(x)) return 0;
+	for (p = x; pairp(p); p = cdr(p))
+		;
+	if (p != NIL)
+		error("dotted list in program", x);
+	if (car(x) == S_apply) return ckapply(x);
+	if (car(x) == S_def) return ckdef(x, top);
+	if (car(x) == S_if) return ckif(x);
+	if (car(x) == S_ifstar) return ckifstar(x);
+	if (car(x) == S_lambda) return cklambda(x);
+	if (car(x) == S_macro) return ckmacro(x, top);
+	if (car(x) == S_prog) return ckprog(x, top);
+	if (car(x) == S_quote) return ckquote(x);
+	if (car(x) == S_setq) return cksetq(x);
+	return ckseq(x, top);
+}
+@

@@ -1,0 +1,192 @@
+
+<<ls9 macros>>=
+#define htlen(d)	veclen(cdr(d))
+#define htelts(d)	fixval(car(d))
+#define htdata(d)	cdr(d)
+#define htslots(d)	vector(cdr(d))
+@
+
+<<ls9 globals>>=
+full	Symhash = NIL;
+full	Symbols = NIL;
+full	Symptr = 0;
+@
+
+<<ls9 impl>>=
+full htsize(full n) {
+	if (n < 47) return 47;
+	if (n < 97) return 97;
+	if (n < 199) return 199;
+	if (n < 499) return 499;
+	if (n < 997) return 997;
+	if (n < 9973) return 9973;
+	if (n < 19997) return 19997;
+	return 39989;
+}
+
+full mkht(full k) {
+	full	n;
+
+	n = mkfix(0); /* mutable, can't use Zero */
+	protect(n);
+	n = cons(n, mkvec(htsize(k)));
+	unprot(1);
+	return n;
+}
+
+size_t hash(byte *s, full k) {
+	size_t	h = 0xabcd;
+
+	while (*s) h = ((h @<< 5) + h) ^ *s++;
+	return h % k;
+}
+
+size_t obhash(full x, full k) {
+	if (specialp(x))
+		return x % k;
+	if (symbolp(x))
+		return hash(symname(x), k);
+	if (fixp(x))
+		return fixval(x) % k;
+	if (charp(x))
+		return charval(x) % k;
+	if (stringp(x))
+		return hash(string(x), k);
+	return 0;
+}
+
+full match(full a, full b) {
+	full	k;
+
+	if (a == b) {
+		return 1;
+	}
+	if (fixp(a) && fixp(b)) {
+		return fixval(a) == fixval(b);
+	}
+	if (charp(a) && charp(b)) {
+		return charval(a) == charval(b);
+	}
+	if (symbolp(a) && symbolp(b)) {
+		k = symlen(a);
+		if (symlen(b) != k) return 0;
+		return memcmp(symname(a), symname(b), k) == 0;
+	}
+	if (stringp(a) && stringp(b)) {
+		k = stringlen(a);
+		if (stringlen(b) != k) return 0;
+		return memcmp(string(a), string(b), k) == 0;
+	}
+	return 0;
+}
+
+void htgrow(full d) {
+	full	nd, e, n, nk, i, h, k;;
+
+	k = htlen(d);
+	nk = 1 + htlen(d);
+	nd = mkht(nk);
+	protect(nd);
+	nk = htlen(nd);
+	for (i = 0; i < k; i++) {
+		for (e = htslots(d)[i]; e != NIL; e = cdr(e)) {
+			h = obhash(caar(e), nk);
+			n = cons(car(e), htslots(nd)[h]);
+			htslots(nd)[h] = n;
+		}
+	}
+	htdata(d) = htdata(nd);
+	unprot(1);
+}
+
+full htlookup(full d, full k) {
+	full	x, h;
+
+	h = obhash(k, htlen(d));
+	x = htslots(d)[h];
+	while (x != NIL) {
+		if (match(caar(x), k)) return car(x);
+		x = cdr(x);
+	}
+	return UNDEF;
+}
+
+void htadd(full d, full k, full v) {
+	full	e, h;
+
+	Tmp = k;
+	protect(v);
+	protect(k);
+	Tmp = NIL;
+	if (htelts(d) >= htlen(d))
+		htgrow(d);
+	h = obhash(k, htlen(d));
+	e = cons(k, v);
+	e = cons(e, htslots(d)[h]);
+	htslots(d)[h] = e;
+	htelts(d)++;
+	unprot(2);
+}
+
+full htrem(full d, full k) {
+	full	*x, *v, h;
+
+	h = obhash(k, htlen(d));
+	v = htslots(d);
+	x = &v[h];
+	while (*x != NIL) {
+		if (match(caar(*x), k)) {
+			*x = cdr(*x);
+			htelts(d)--;
+			break;
+		}
+		x = &cdr(*x);
+	}
+	return d;
+}
+
+full mksym(char *s, full k) {
+	full	n;
+
+	n = newvec(T_SYMBOL, k+1);
+	strcpy((char *) symname(n), s);
+	return n;
+}
+
+full findsym(char *s) {
+	full	y;
+
+	y = mksym(s, strlen(s));
+	y = htlookup(Symhash, y);
+	if (y != UNDEF) return car(y);
+	return NIL;
+}
+
+full intern(full y) {
+	full	n, *vn, *vs, i, k;
+
+	protect(y);
+	htadd(Symhash, y, mkfix(Symptr));
+	unprot(1);
+	k = veclen(Symbols);
+	if (Symptr >= k) {
+		n = mkvec(k + CHUNKSIZE);
+		vs = vector(Symbols);
+		vn = vector(n);
+		for (i=0; i<k; i++) vn[i] = vs[i];
+		Symbols = n;
+	}
+	vector(Symbols)[Symptr] = y;
+	Symptr++;
+	return y;
+}
+
+full symref(char *s) {
+	full	y, new;
+
+	y = findsym(s);
+	if (y != NIL) return y;
+	new = mksym(s, strlen(s));
+	return intern(new);
+}
+@

@@ -1,0 +1,193 @@
+
+Low-level input/output
+
+<<ls9 macros>>=
+#define printb(s)	prints((char *) s)
+#define nl()		prints("\n")
+@
+
+<<ls9 globals>>=
+FILE	*Ports[NPORTS];
+byte	Port_flags[NPORTS];
+
+full	Inport = 0,
+	Outport = 1,
+	Errport = 2;
+
+full	Outstr = NIL;
+size_t	Outmax = 0;
+size_t	Outptr = 0;
+
+char	*Instr = NULL;
+int	Rejected = -1;
+@
+
+<<ls9 impl>>=
+int readc(void) {
+	int	c;
+
+	if (Instr != NULL) {
+		if (Rejected > -1) {
+			c = Rejected;
+			Rejected = -1;
+			return c;
+		}
+		if (0 == *Instr) {
+			return EOF;
+		}
+		else {
+			return *Instr++;
+		}
+	}
+	else {
+		if (NULL == Ports[Inport]) {
+			fatal("readc: input port is not open");
+		}
+		return getc(Ports[Inport]);
+	}
+}
+
+void rejectc(int c) {
+	if (Instr != NULL) {
+		Rejected = c;
+	}
+	else {
+		ungetc(c, Ports[Inport]);
+	}
+}
+
+void flush(void) {
+	if (fflush(Ports[Outport]))
+		error("file write error, port",
+			mkport(Outport, T_OUTPORT));
+}
+
+void blockwrite(char *s, size_t k) {
+	full	n;
+
+	if (1 == Plimit) return;
+	if (Outstr != NIL) {
+		while (Outptr + k >= Outmax) {
+			n = mkstr(NULL, Outmax+1000);
+			memcpy(string(n), string(Outstr), Outptr);
+			Outmax += 1000;
+			Outstr = n;
+		}
+		memcpy(&string(Outstr)[Outptr], s, k);
+		Outptr += k;
+		string(Outstr)[Outptr] = 0;
+		return;
+	}
+	if (NULL == Ports[Outport])
+		fatal("blockwrite: output port is not open");
+	if (fwrite(s, 1, k, Ports[Outport]) != k)
+		error("file write error, port",
+			mkport(Outport, T_OUTPORT));
+	if ((1 == Outport || 2 == Outport) && '\n' == s[k-1])
+		flush();
+	if (Plimit) {
+		Plimit -= k;
+		if (Plimit < 1) Plimit = 1;
+	}
+}
+
+void writec(int c) {
+	char	b[1];
+
+	b[0] = (char)c;
+	blockwrite(b, 1);
+}
+
+void prints(char *s) {
+	blockwrite(s, strlen(s));
+}
+@
+
+High-level port I/O
+
+<<ls9 impl>>=
+full newport(void) {
+	full	i, n;
+
+	for (n=0; n<2; n++) {
+		for (i=0; i<NPORTS; i++) {
+			if (NULL == Ports[i])
+				return i;
+		}
+		if (0 == n) gc();
+	}
+	return NIL;
+}
+
+full open_inport(char *path) {
+	full	i;
+
+	i = newport();
+	if (NIL == i) return NIL;
+	Ports[i] = fopen(path, "r");
+	if (NULL == Ports[i]) return NIL;
+	return i;
+}
+
+full open_outport(char *path, int append) {
+	full	i;
+
+	i = newport();
+	if (NIL == i) return NIL;
+	Ports[i] = fopen(path, append? "a": "w");
+	if (NULL == Ports[i]) return NIL;
+	return i;
+}
+
+full set_inport(full port) {
+	full	p = Inport;
+
+	Inport = port;
+	return p;
+}
+
+full set_outport(full port) {
+	full	p = Outport;
+
+	Outport = port;
+	return p;
+}
+
+void close_port(full port) {
+	if (port >= NPORTS) {
+		return;
+	}
+	if (NULL == Ports[port]) {
+		Port_flags[port] = 0;
+		return;
+	}
+	fclose(Ports[port]);
+	Ports[port] = NULL;
+	Port_flags[port] = 0;
+}
+
+void reset_stdports(void) {
+	clearerr(stdin);
+	clearerr(stdout);
+	clearerr(stderr);
+	Inport = 0;
+	Outport = 1;
+	Errport = 2;
+}
+
+full lock_port(full port) {
+	if (port >= NPORTS) {
+		return NIL;
+	}
+	Port_flags[port] |= LOCK_TAG;
+	return TRUE;
+}
+
+full unlock_port(full port) {
+	if (port >= NPORTS) {
+		return NIL;
+	}
+	Port_flags[port] &= (byte)~LOCK_TAG;
+	return TRUE;
+}
+@

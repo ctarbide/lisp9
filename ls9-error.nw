@@ -1,0 +1,101 @@
+
+Error reporting and handling
+
+<<ls9 globals>>=
+full	Trace[NTRACE];
+full	Tp = 0;
+
+size_t	Plimit = 0;
+
+full	Line = 1;
+full	Files = NIL;
+
+full	Symbols;
+
+jmp_buf	Restart;
+jmp_buf	Errtag;
+full	Handler = NIL;
+
+full	Glob;
+full	S_errtag, S_errval;
+@
+
+<<ls9 impl>>=
+void clrtrace(void) {
+	int	i;
+
+	for (i=0; i<NTRACE; i++) Trace[i] = NIL;
+}
+
+int gottrace(void) {
+	int	i;
+
+	for (i=0; i<NTRACE; i++)
+		if (Trace[i] != NIL) return 1;
+	return 0;
+}
+
+void report(char *s, full x) {
+	full	i, j, o;
+
+	o = set_outport(2);
+	prints("*** error: ");
+	prints(s);
+	if (x != UNDEF) {
+		prints(": ");
+		Plimit = 100;
+		prin(x);
+		Plimit = 0;
+	}
+	nl();
+	if (Files != NIL) {
+		prints("*** file: ");
+		printb(string(car(Files)));
+		prints(", line: ");
+		prints(ntoa((ifull)Line, 10));
+		nl();
+	}
+	if (gottrace()) {
+		prints("*** trace:");
+		i = Tp;
+		for (j=0; j<NTRACE; j++) {
+			if (i >= NTRACE) i = 0;
+			if (Trace[i] != NIL) {
+				prints(" ");
+				printb(symname(vector(Symbols)[Trace[i]]));
+			}
+			i++;
+		}
+		nl();
+	}
+	set_outport(o);
+}
+
+void error(char *s, full x) {
+	full	n;
+
+	n = assq(S_errtag, Glob);
+	Handler = (NIL == n)? NIL: cadr(n);
+	if (Handler != NIL) {
+		n = assq(S_errval, Glob);
+		if (n != NIL && cadr(n) == Handler)
+			bindset(S_errval, mkstr(s, strlen(s)));
+		longjmp(Errtag, 1);
+	}
+	report(s, x);
+	longjmp(Restart, 1);
+}
+
+void expect(char *who, char *what, full got) {
+	char	b[100];
+
+	sprintf(b, "%s: expected %s", who, what);
+	error(b, got);
+}
+
+void fatal(char *s) {
+	fprintf(stderr, "*** fatal error: ");
+	fprintf(stderr, "%s\n", s);
+	exit(EXIT_FAILURE);
+}
+@

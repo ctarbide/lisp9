@@ -1,0 +1,77 @@
+
+Compiler, literal pool
+
+<<ls9 globals>>=
+full	Obhash = NIL,
+	Obarray = NIL,
+	Obmap = NIL,
+	Obptr = 0;
+@
+
+<<ls9 impl>>=
+full obslot(void) {
+	full	i, j, k, m, n;
+	byte	*s;
+
+	for (m = 0; m < 2; m++) {
+		for (j = 0; j < 2; j++) {
+			k = veclen(Obarray);
+			s = string(Obmap);
+			for (i=0; i<k; i++) {
+				if (OBFREE == s[Obptr]) {
+					s[Obptr] = OBALLOC;
+					return Obptr;
+				}
+				Obptr++;
+				if (Obptr >= k) Obptr = 0;
+			}
+			if (0 == j) gc();
+		}
+		if (k + CHUNKSIZE >= 64 * 1024) break;
+		n = mkvec(k + CHUNKSIZE);
+		memcpy(vector(n), vector(Obarray), k * sizeof(full));
+		Obarray = n;
+		n = mkstr(NULL, k + CHUNKSIZE);
+		memset(string(n), OBFREE, k+CHUNKSIZE);
+		memcpy(string(n), string(Obmap), k);
+		Obmap = n;
+	}
+	error("out of object space", UNDEF);
+	return NIL;
+}
+
+full obindex(full x) {
+	full	n;
+	full	i;
+
+	if (pairp(x) || vectorp(x) || closurep(x))
+		return obslot();
+	n = htlookup(Obhash, x);
+	if (n != UNDEF) {
+		i = fixval(cdr(n));
+		if (	string(Obmap)[i] != OBFREE &&
+			match(x, vector(Obarray)[i])
+		)
+			return i;
+		htrem(Obhash, x);
+	}
+	i = obslot();
+	htadd(Obhash, x, mkfix(i));
+	return i;
+}
+
+full subprog(full x, full k) {
+	full	n, i, j;
+	byte	*sx, *sn;
+
+	n = mkstr(NULL, k);
+	sx = string(x);
+	sn = string(n);
+	j = 0;
+	for (i=0; i<k; i++) {
+		sn[j] = sx[i];
+		j++;
+	}
+	return n;
+}
+@

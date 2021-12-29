@@ -1,0 +1,355 @@
+
+Memory management
+
+<<ls9 definitions>>=
+#define OBFREE		0
+#define OBALLOC		1
+#define	OBUSED		2
+
+#define ISIZE0		1
+#define ISIZE1		3
+#define ISIZE2		5
+
+#define RAW_VECLINK	0
+#define RAW_VECSIZE	1
+#define RAW_VECDATA	2
+@
+
+<<ls9 macros>>=
+#define fetcharg(a, i)	(full)(((a)[i] @<< 8) | (a)[(i)+1])
+
+#define protect(n) (Protected = cons((n), Protected))
+@
+
+<<ls9 globals>>=
+full	*Car = NULL,
+	*Cdr = NULL;
+byte	*Tag = NULL;
+@
+
+<<ls9 globals>>=
+full	*Vectors = NULL;
+
+full	Freelist = NIL;
+full	Freevec = 0;
+
+full	*GC_roots[] = {
+		&Protected, &Symbols, &Symhash, &Prog, &Env, &Obhash,
+		&Obarray, &Obmap, &Cts, &Emitbuf, &Glob, &Macros, &Rts,
+		&Acc, &E0, &Ep, &Argv, &Tmp, &Tmp_car, &Tmp_cdr, &Files,
+		&Outstr, &Nullvec, &Nullstr, &Blank, &Zero, &One, &Ten,
+		NULL };
+
+full	Obarray, Obmap;
+
+int	GC_verbose = 0;
+full	*GC_roots[];
+full	Rts;
+full	Sp;
+
+full	Tmp_car = NIL,
+	Tmp_cdr = NIL;
+
+full	Protected = NIL;
+full	Tmp = NIL;
+@
+
+<<ls9 impl>>=
+full unprot(int k) {
+	full	n = NIL; /*LINT*/
+
+	while (k) {
+		if (NIL == Protected)
+			error("unprot: stack underflow", UNDEF);
+		n = car(Protected);
+		Protected = cdr(Protected);
+		k--;
+	}
+	return n;
+}
+
+void alloc_nodepool(void) {
+	Car = malloc(sizeof(full) * NNODES);
+	Cdr = malloc(sizeof(full) * NNODES);
+	Tag = malloc(NNODES);
+	if (NULL == Car || NULL == Cdr || NULL == Tag)
+		fatal("alloc_nodepool: out of physical memory");
+	memset(Car, 0, sizeof(full) * NNODES);
+	memset(Cdr, 0, sizeof(full) * NNODES);
+	memset(Tag, 0, NNODES);
+}
+
+void alloc_vecpool(void) {
+	Vectors = malloc(sizeof(full) * NVCELLS);
+	if (NULL == Vectors)
+		fatal("alloc_vecpool: out of physical memory");
+	memset(Vectors, 0, sizeof(full) * NVCELLS);
+}
+
+void marklit(full p) {
+	full	i, k, op;
+	byte	*v, *m;
+
+	k = stringlen(p);
+	v = string(p);
+	m = string(Obmap);
+	for (i=0; i<k; ) {
+		op = v[i];
+		if (OP_QUOTE == op) {
+			m[fetcharg(v, i+1)] = OBUSED;
+			i += ISIZE1;
+		}
+		else if (OP_ARG == op || OP_PUSHVAL == op || OP_JMP == op ||
+			 OP_BRF == op || OP_BRT == op || OP_CLOSURE == op ||
+			 OP_MKENV == op || OP_ENTER == op || OP_ENTCOL == op ||
+			 OP_SETARG == op || OP_SETREF == op || OP_MACRO == op)
+		{
+			i += ISIZE1;
+		}
+		else if (OP_REF == op || OP_CPARG == op || OP_CPREF == op) {
+			i += ISIZE2;
+		}
+		else {
+			i += ISIZE0;
+		}
+	}
+}
+
+/*
+ * Mark nodes which can be accessed through N.
+ * Using modified Deutsch/Schorr/Waite pointer reversal algorithm.
+ * S0: M==0, T==0, unvisited, process CAR (vectors: process 1st slot);
+ * S1: M==1, T==1, CAR visited, process CDR (vectors: process next slot);
+ * S2: M==1, T==0, completely visited, return to parent.
+ */
+
+void mark(full n) {
+	full	i, x, parent, *v;
+
+	parent = NIL;
+	while (1) {
+		if (specialp(n) || (tag(n) & MARK_TAG)) {
+			if (NIL == parent)
+				break;
+			if (tag(parent) & VECTOR_TAG) { /* S1 --> S1|done */
+				i = vecndx(parent);
+				v = vector(parent);
+				if (tag(parent) & TRAV_TAG &&
+				    ((size_t)i+1) < veclen(parent)
+				) {			/* S1 --> S1 */
+					x = v[i+1];
+					v[i+1] = v[i];
+					v[i] = n;
+					n = x;
+					vecndx(parent) = i+1;
+				}
+				else {			/* S1 --> done */
+					x = parent;
+					parent = v[i];
+					v[i] = n;
+					n = x;
+					veclink(n) = n;
+				}
+			}
+			else if (tag(parent) & TRAV_TAG) { /* S1 --> S2 */
+				x = cdr(parent);
+				cdr(parent) = car(parent);
+				car(parent) = n;
+				tag(parent) &= (byte)~TRAV_TAG;
+				n = x;
+			}
+			else {				/* S2 --> done */
+				x = parent;
+				parent = cdr(x);
+				cdr(x) = n;
+				n = x;
+			}
+		}
+		else if (tag(n) & VECTOR_TAG) {		/* S0 --> S1 */
+			tag(n) |= MARK_TAG;
+			if (T_VECTOR == car(n) && veclen(n) != 0) {
+				tag(n) |= TRAV_TAG;
+				vecndx(n) = 0;
+				v = vector(n);
+				x = v[0];
+				v[0] = parent;
+				parent = n;
+				n = x;
+			}
+			else {
+				veclink(n) = n;
+			}
+		}
+		else if (tag(n) & ATOM_TAG) {		/* S0 --> S2 */
+			if (cdr(n) != NIL) {
+				if (T_BYTECODE == car(n)) {
+					marklit(cdr(n));
+				}
+				else if (T_INPORT == car(n) ||
+					 T_OUTPORT == car(n)
+				)
+					Port_flags[portno(n)] |= USED_TAG;
+			}
+			x = cdr(n);
+			cdr(n) = parent;
+			parent = n;
+			n = x;
+			tag(parent) |= MARK_TAG;
+		}
+		else {					/* S0 --> S1 */
+			x = car(n);
+			car(n) = parent;
+			tag(n) |= MARK_TAG;
+			parent = n;
+			n = x;
+			tag(parent) |= TRAV_TAG;
+		}
+	}
+}
+
+full gc(void) {
+	full	*a, i, n, k, sk = 0;
+	char	buf[100];
+	byte	*m;
+
+	for (i=0; i<NPORTS; i++) {
+		if (Port_flags[i] & LOCK_TAG)
+			Port_flags[i] |= USED_TAG;
+		else if (i == Inport || i == Outport)
+			Port_flags[i] |= USED_TAG;
+		else
+			Port_flags[i] &= (byte)~USED_TAG;
+	}
+	if (Rts != NIL) {
+		sk = stringlen(Rts);
+		stringlen(Rts) = (1 + Sp) * sizeof(full);
+	}
+	for (i=0; GC_roots[i] != NULL; i++) {
+		mark(*GC_roots[i]);
+	}
+	if (Rts != NIL) {
+		/* MAYBE UNINITIALIZED */
+		stringlen(Rts) = sk;
+	}
+	k = 0;
+	Freelist = NIL;
+	for (i=0; i<NNODES; i++) {
+		if (!(tag(i) & MARK_TAG)) {
+			cdr(i) = Freelist;
+			Freelist = i;
+			k++;
+		}
+		else {
+			tag(i) &= (byte)~MARK_TAG;
+		}
+	}
+	for (i=0; i<NPORTS; i++) {
+		if (!(Port_flags[i] & USED_TAG) && Ports[i] != NULL) {
+			fclose(Ports[i]);
+			Ports[i] = NULL;
+		}
+	}
+	n = NIL == Obarray? 0: veclen(Obarray);
+	a = NIL == Obarray? NULL: vector(Obarray);
+	m = NIL == Obmap? NULL: string(Obmap);
+	for (i=0; i<n; i++) {
+		if (OBUSED  == m[i]) {
+			m[i] = OBALLOC;
+		}
+		else {
+			m[i] = OBFREE;
+			a[i] = NIL;
+		}
+	}
+	if (GC_verbose) {
+		sprintf(buf, "GC: %"PRIuFULL" nodes reclaimed", k);
+		prints(buf); nl();
+		flush();
+	}
+	return k;
+}
+
+full cons3(full pcar, full pcdr, int ptag) {
+	full	n, k;
+
+	if (NIL == Freelist) {
+		if (0 == (ptag & ~CONST_TAG))
+			Tmp_car = pcar;
+		if (!(ptag & VECTOR_TAG))
+			Tmp_cdr = pcdr;
+		k = gc();
+		if (k < NNODES / 2) {
+			/* memory low! */
+		}
+		Tmp_car = Tmp_cdr = NIL;
+		if (NIL == Freelist)
+			error("cons3: out of nodes", UNDEF);
+	}
+	n = Freelist;
+	Freelist = cdr(Freelist);
+	car(n) = pcar;
+	cdr(n) = pcdr;
+	tag(n) = (byte)ptag;
+	return n;
+}
+
+void unmark_vecs(void) {
+	full	p, k, link;
+
+	p = 0;
+	while (p < Freevec) {
+		link = p;
+		k = Vectors[p + RAW_VECSIZE];
+		p += vecsize(k);
+		Vectors[link] = NIL;
+	}
+}
+
+size_t gcv(void) {
+	size_t	v, k, to, from;
+	char	buf[100];
+
+	unmark_vecs();
+	gc();		/* re-mark live vectors */
+	to = from = 0;
+	while (from < (size_t)Freevec) {
+		v = (size_t)Vectors[from + RAW_VECSIZE];
+		k = vecsize(v);
+		if (Vectors[from + RAW_VECLINK] != NIL) {
+			if (to != from) {
+				memmove(&Vectors[to], &Vectors[from],
+					k * sizeof(full));
+				cdr(Vectors[to + RAW_VECLINK]) =
+					to + RAW_VECDATA;
+			}
+			to += k;
+		}
+		from += k;
+	}
+	k = (size_t)Freevec - to;
+	if (GC_verbose) {
+		sprintf(buf, "GCV: %"PRIuFULL" fulls reclaimed", k);
+		prints(buf); nl();
+		flush();
+	}
+	Freevec = (full)to;
+	return k;
+}
+
+full newvec(full type, full size) {
+	full	n, v, wsize;
+
+	wsize = vecsize(size);
+	if (Freevec + wsize >= NVCELLS) {
+		gcv();
+		if (Freevec + wsize >= NVCELLS)
+			error("newvec: out of vector space", UNDEF);
+	}
+	v = Freevec;
+	Freevec += wsize;
+	n = cons3(type, v + RAW_VECDATA, VECTOR_TAG);
+	Vectors[v + RAW_VECLINK] = n;
+	Vectors[v + RAW_VECSIZE] = size;
+	return n;
+}
+@

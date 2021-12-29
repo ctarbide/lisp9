@@ -1,0 +1,101 @@
+
+Special Objects
+
+<<ls9 definitions>>=
+#define ATOM_TAG	0x01	/* Atom, CAR = type, CDR = next */
+#define MARK_TAG	0x02	/* Mark */
+#define TRAV_TAG	0x04	/* Traversal */
+#define VECTOR_TAG	0x08	/* Vector, CAR = type, CDR = content */
+#define PORT_TAG	0x10	/* Atom is an I/O port (with ATOM_TAG) */
+#define USED_TAG	0x20	/* Port: used flag */
+#define LOCK_TAG	0x40	/* Port: locked (do not close) */
+#define CONST_TAG	0x80	/* Node is immutable */
+@
+
+<<ls9 definitions>>=
+#define NIL		((full)-1)
+#define TRUE		((full)(NIL - 1))
+#define EOFMARK		((full)(NIL - 2))
+#define UNDEF		((full)(NIL - 3))
+#define RPAREN		((full)(NIL - 4))
+#define DOT		((full)(NIL - 5))
+@
+
+Tagged data types
+
+<<ls9 definitions>>=
+#define T_BYTECODE	((full)(DOT - 1))
+#define T_CATCHTAG	((full)(T_BYTECODE - 1))
+#define T_CHAR		((full)(T_BYTECODE - 2))
+#define T_CLOSURE	((full)(T_BYTECODE - 3))
+#define T_FIXNUM	((full)(T_BYTECODE - 4))
+#define T_INPORT	((full)(T_BYTECODE - 5))
+#define T_OUTPORT	((full)(T_BYTECODE - 6))
+#define T_STRING	((full)(T_BYTECODE - 7))
+#define T_SYMBOL	((full)(T_BYTECODE - 8))
+#define T_VECTOR	((full)(T_BYTECODE - 9))
+@
+
+<<ls9 macros>>=
+#define specialp(x)	((full)(x) >= T_VECTOR)
+
+#define cons(a, d)	cons3((a), (d), 0)
+#define mkatom(a, d)	cons3(a, d, ATOM_TAG)
+
+#define mkfix(n) mkatom(T_FIXNUM, mkatom(n, NIL))
+
+#define mkchar(c) mkatom(T_CHAR, mkatom((c) & 0xff, NIL))
+
+#define fixval(n) (cadr(n))
+
+#define charval(n) (cadr(n))
+
+#define add_ovfl(a,b) \
+	((((ifull)(b) > 0) && ((ifull)(a) > IFULL_MAX - (ifull)(b))) || \
+	 (((ifull)(b) < 0) && ((ifull)(a) < IFULL_MIN - (ifull)(b))))
+
+#define sub_ovfl(a,b) \
+	((((ifull)(b) < 0) && ((ifull)(a) > IFULL_MAX + (ifull)(b))) || \
+	 (((ifull)(b) > 0) && ((ifull)(a) < IFULL_MIN + (ifull)(b))))
+@
+
+<<ls9 impl>>=
+full mkstr(char *s, size_t k) {
+	full	n;
+
+	if (0 == k) return Nullstr;
+	n = newvec(T_STRING, k+1);
+	if (NULL == s) {
+		memset(string(n), 0, k+1);
+	}
+	else {
+		memcpy(string(n), s, k);
+		string(n)[k] = 0;
+	}
+	return n;
+}
+
+full mkvec(full k) {
+	full	n, *v, i;
+
+	/* fprintf(stderr, "**************** mkvec: %"PRIxFULL"\n", k); */
+
+	if (0 == k) return Nullvec;
+	/* if (NIL == k) return Nullvec; */    /* EXPERIMENT */
+	n = newvec(T_VECTOR, k * sizeof(full));
+	v = vector(n);
+	for (i=0; i<k; i++) v[i] = NIL;
+	return n;
+}
+
+full mkport(full portno, full type) {
+	full	n, pf;
+
+	pf = Port_flags[portno];
+	Port_flags[portno] |= LOCK_TAG;
+	n = mkatom(portno, NIL);
+	n = cons3(type, n, ATOM_TAG|PORT_TAG);
+	Port_flags[portno] = (byte)pf;
+	return n;
+}
+@

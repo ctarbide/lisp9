@@ -1,4 +1,22 @@
 
+	This is a fork of LISP9 based on lisp9-20200220.tgz from
+	https://www.t3x.org/lsi/index.html and
+	https://www.t3x.org/lisp9/index.html.
+
+	The canonical source for this version is at
+	https://github.com/ctarbide/lisp9.
+
+	This version depends on cproto, from
+	https://invisible-island.net/cproto/cproto.html.
+
+	Nils M Holm has many books (and code) on LISP and
+	other advanced topics on https://www.t3x.org/.
+
+	The original README follows:
+
+	****************************************************************
+
+
 	LISP9 -- an experimental LISP system
 	Nils M Holm, 2018, 2019
 	In the public domain.

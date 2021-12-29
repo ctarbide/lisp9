@@ -1,0 +1,216 @@
+
+Inline functions, strings
+
+<<ls9 globals>>=
+full	P_mkstr;
+full	P_sconc;
+full	P_sequal;
+full	P_sfill;
+full	P_sgrtr;
+full	P_sgteq;
+full	P_siequal;
+full	P_sigrtr;
+full	P_sigteq;
+full	P_siless;
+full	P_silteq;
+full	P_sless;
+full	P_slteq;
+full	P_sref;
+full	P_sset;
+full	P_substr;
+@
+
+<<ls9 impl>>=
+int scomp(full x, full y) {
+	full	kx, ky;
+
+	kx = stringlen(x);
+	ky = stringlen(y);
+	if (kx == ky) return memcmp(string(x), string(y), kx);
+	return memcmp(string(x), string(y), 1+(kx<ky? kx: ky));
+}
+
+int memcmp_ci(char *a, char *b, full k) {
+	full	i;
+	int	d;
+
+	for (i=0; i<k; i++) {
+		d = tolower(a[i]) - tolower(b[i]);
+		if (d) return d;
+	}
+	return 0;
+}
+
+int scomp_ci(full x, full y) {
+	full	kx, ky;
+
+	kx = stringlen(x);
+	ky = stringlen(y);
+	if (kx == ky)
+		return memcmp_ci((char *) string(x),
+				(char *) string(y), kx);
+	return memcmp_ci((char *) string(x), (char *) string(y),
+			1+(kx<ky? kx: ky));
+}
+
+full sless(full x, full y) {
+	if (!string(x)) expect("s<", "string", x);
+	if (!string(y)) expect("s<", "string", y);
+	return scomp(x, y) < 0? TRUE: NIL;
+}
+
+full slteq(full x, full y) {
+	if (!string(x)) expect("s<=", "string", x);
+	if (!string(y)) expect("s<=", "string", y);
+	return scomp(x, y) <= 0? TRUE: NIL;
+}
+
+full sequal(full x, full y) {
+	if (!string(x)) expect("s=", "string", x);
+	if (!string(y)) expect("s=", "string", y);
+	if (stringlen(x) != stringlen(y)) return NIL;
+	return scomp(x, y) == 0? TRUE: NIL;
+}
+
+full sgrtr(full x, full y) {
+	if (!string(x)) expect("s>", "string", x);
+	if (!string(y)) expect("s>", "string", y);
+	return scomp(x, y) > 0? TRUE: NIL;
+}
+
+full sgteq(full x, full y) {
+	if (!string(x)) expect("s>=", "string", x);
+	if (!string(y)) expect("s>=", "string", y);
+	return scomp(x, y) >= 0? TRUE: NIL;
+}
+
+full siless(full x, full y) {
+	if (!string(x)) expect("si<", "string", x);
+	if (!string(y)) expect("si<", "string", y);
+	return scomp_ci(x, y) < 0? TRUE: NIL;
+}
+
+full silteq(full x, full y) {
+	if (!string(x)) expect("si<=", "string", x);
+	if (!string(y)) expect("si<=", "string", y);
+	return scomp_ci(x, y) <= 0? TRUE: NIL;
+}
+
+full siequal(full x, full y) {
+	if (!string(x)) expect("si=", "string", x);
+	if (!string(y)) expect("si=", "string", y);
+	if (stringlen(x) != stringlen(y)) return NIL;
+	return scomp_ci(x, y) == 0? TRUE: NIL;
+}
+
+full sigrtr(full x, full y) {
+	if (!string(x)) expect("si>", "string", x);
+	if (!string(y)) expect("si>", "string", y);
+	return scomp_ci(x, y) > 0? TRUE: NIL;
+}
+
+full sigteq(full x, full y) {
+	if (!string(x)) expect("si>=", "string", x);
+	if (!string(y)) expect("si>=", "string", y);
+	return scomp_ci(x, y) >= 0? TRUE: NIL;
+}
+
+full b_mkstr(full x, full a) {
+	full	i, n, c, k;
+	byte	*s;
+
+	if (!fixp(x)) expect("mkstr", "fixnum", x);
+	if (!charp(a)) expect("mkstr", "char", a);
+	c = charval(a);
+	k = fixval(x);
+	n = mkstr(NULL, k);
+	s = string(n);
+	for (i=0; i<k; i++) s[i] = (byte)c;
+	return n;
+}
+
+full sconc(full x) {
+	full	p, n, k, m;
+	byte	*s;
+
+	k = 0;
+	for (p = x; p != NIL; p = cdr(p)) {
+		if (!stringp(car(p)))
+			expect("sconc", "string", car(p));
+		k += stringlen(car(p))-1;
+	}
+	n = mkstr(NULL, k);
+	s = string(n);
+	k = 0;
+	for (p = x; p != NIL; p = cdr(p)) {
+		m = stringlen(car(p));
+		memcpy(&s[k], string(car(p)), m);
+		k += m-1;
+	}
+	return n;
+}
+
+full sref(full s, full n) {
+	full	i;
+
+	if (!stringp(s)) expect("sref", "string", s);
+	if (!fixp(n)) expect("sref", "fixnum", n);
+	i = fixval(n);
+	if (i >= stringlen(s)-1) {
+		error("sref: index out of range", n);
+	}
+	return mkchar(string(s)[i]);
+}
+
+void sset(full s, full n, full r) {
+	full	i;
+
+	if (!stringp(s)) expect("sset", "string", s);
+	if (constp(s)) error("sset: immutable", s);
+	if (!fixp(n)) expect("sset", "fixnum", n);
+	if (!charp(r)) expect("sset", "char", r);
+	i = fixval(n);
+	if (i >= stringlen(s)-1) {
+		error("sset: index out of range", n);
+	}
+	string(s)[i] = (byte)charval(r);
+}
+
+full substr(full s, full n0, full n1) {
+	full	k, k0, k1, i, j, n;
+	byte	*s0, *s1;
+
+	if (!stringp(s)) expect("substr", "string", s);
+	if (!fixp(n0)) expect("substr", "fixnum", n0);
+	if (!fixp(n1)) expect("substr", "fixnum", n1);
+	k0 = fixval(n0);
+	k1 = fixval(n1);
+	if (k0 > k1 || k1 >= stringlen(s)) {
+		error("substr: invalid range", cons(n0, cons(n1, NIL)));
+	}
+	k = k1 - k0;
+	n = mkstr(NULL, k);
+	j = 0;
+	s0 = string(s);
+	s1 = string(n);
+	for (i=k0; i<k1; i++) {
+		s1[j] = s0[i];
+		j++;
+	}
+	s1[j] = 0;
+	return n;
+}
+
+void sfill(full x, full a) {
+	full	c, i, k;
+	byte	*s;
+
+	if (!stringp(x)) expect("sfill", "string", x);
+	if (constp(x)) error("sfill: immutable", x);
+	if (!charp(a)) expect("sfill", "char", a);
+	c = charval(a);
+	k = stringlen(x)-1;
+	s = string(x);
+	for (i=0; i<k; i++) s[i] = (byte)c;
+}
+@

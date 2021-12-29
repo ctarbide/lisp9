@@ -1,0 +1,455 @@
+
+Reader
+
+<<ls9 definitions>>=
+#define LP	'('
+#define RP	')'
+@
+
+<<ls9 macros>>=
+#define octalp(c) \
+	('0' == (c) || '1' == (c) || '2' == (c) || '3' == (c) || \
+	 '4' == (c) || '5' == (c) || '6' == (c) || '7' == (c))
+
+#define symbolic(c) \
+	(isalpha(c) || isdigit(c) || (c && strchr("!$%^&*-/_+=~.?<>:", c)))
+@
+
+<<ls9 globals>>=
+full	S_apply, S_def, S_defmac, S_defun, S_errtag,
+	S_errval, S_if, S_ifstar, S_imagefile, S_labels, S_lambda,
+	S_macro, S_prog, S_quiet, S_quote, S_qquote, S_starstar,
+	S_splice, S_setq, S_start, S_unquote;
+
+full	P_ssize, P_stringp;
+
+full	P_abs, P_alphac, P_atom, P_bitop, P_caar, P_cadr, P_car,
+	P_catchstar, P_cdar, P_cddr, P_cdr, P_cequal, P_cgrtr, P_cgteq,
+	P_char, P_charp, P_charval, P_cless, P_close_port, P_clteq,
+	P_cmdline, P_conc, P_cons, P_constp, P_ctagp, P_delete, P_div,
+	P_downcase, P_dump_image, P_eofp, P_eq, P_equal, P_gc, P_error,
+	P_errport, P_eval, P_existsp, P_fixp, P_flush, P_format, P_funp,
+	P_gensym, P_grtr, P_gteq, P_inport, P_inportp, P_less,
+	P_liststr, P_listvec, P_load, P_lowerc, P_lteq, P_max, P_min,
+	P_minus, P_mkvec, P_mx, P_mx1, P_nconc, P_nreconc,
+	P_not, P_null, P_numeric, P_numstr, P_obtab, P_open_infile,
+	P_open_outfile, P_outport, P_outportp, P_pair, P_peekc, P_plus,
+	P_prin, P_princ, P_quit, P_read, P_readc, P_reconc, P_rem,
+	P_rename, P_set_inport, P_set_outport,
+	P_setcar, P_setcdr, P_strlist, P_strnum,
+	P_subvec, P_symbol, P_symbolp, P_symname, P_symtab,
+	P_syscmd, P_throwstar, P_times, P_untag, P_upcase, P_upperc,
+	P_veclist, P_vconc, P_vectorp, P_vfill, P_vref, P_vset, P_vsize,
+	P_whitec, P_writec;
+
+volatile int	Intr;
+
+int	Inlist = 0;
+int	Quoting = 0;
+
+char	*Readerr = NULL;
+@
+
+<<ls9 init>>=
+S_apply = symref("apply");
+S_def = symref("def");
+S_defmac = symref("defmac");
+S_defun = symref("defun");
+S_errtag = symref("*errtag*");
+S_errval = symref("*errval*");
+S_if = symref("if");
+S_ifstar = symref("if*");
+S_imagefile = symref("*imagefile*");
+S_labels = symref("labels");
+S_lambda = symref("lambda");
+S_macro = symref("macro");
+S_prog = symref("prog");
+S_quiet = symref("*quiet*");
+S_quote = symref("quote");
+S_qquote = symref("qquote");
+S_unquote = symref("unquote");
+S_splice = symref("splice");
+S_starstar = symref("**");
+S_setq = symref("setq");
+S_start = symref("start");
+@
+
+<<ls9 impl>>=
+int octchar(char *s) {
+	int	v = 0;
+
+	if (!octalp(*s)) return -1;
+	while (octalp(*s)) {
+		v = 8*v + *s - '0';
+		s++;
+	}
+	return (*s || v > 255)? -1: v;
+}
+
+int strcmp_ci(char *s1, char *s2) {
+	int	c1, c2;
+
+	while (1) {
+		c1 = tolower((int) *s1++);
+		c2 = tolower((int) *s2++);
+		if (!c1 || !c2 || c1 != c2)
+			break;
+	}
+	return c1-c2;
+}
+
+void rderror(char *s, full x) {
+	if (NULL == Instr) error(s, x);
+	Readerr = s;
+}
+
+/* CASTs lots of CASTs */
+full rdchar(void) {
+	char	name[TOKLEN+1];
+	full	i, v;
+	int	c;
+
+	c = readc();
+	name[0] = (char)c;
+	c = readc();
+	for (i=1; i<TOKLEN; i++) {
+		if (Intr || Readerr) return NIL;
+		if (!isalpha(c) && !isdigit(c)) break;
+		name[i] = (char)c;
+		c = readc();
+	}
+	name[i] = 0;
+	rejectc(c);
+	if (TOKLEN == i)
+		rderror("char name too long",
+			mkstr(name, strlen(name)));
+	if (!strcmp_ci(name, "ht")) return mkchar(9);
+	if (!strcmp_ci(name, "nl")) return mkchar(10);
+	if (!strcmp_ci(name, "sp")) return mkchar(' ');
+	v = (full)octchar(&name[1]);
+	if ('\\' == *name && (ifull)v >= 0) return mkchar(v);
+	if (i != 1) rderror("bad character name",
+			mkstr(name, strlen(name)));
+	return mkchar(name[0]);
+}
+
+full rdlist(void) {
+	full		n, a, p;
+	full		new;
+	static char	badpair[] = "malformed pair";
+
+	Inlist++;
+	n = xread2();
+	if (RPAREN == n) {
+		Inlist--;
+		return NIL;
+	}
+	p = NIL;
+	a = cons3(n, NIL, CONST_TAG);
+	protect(a);
+	while (n != RPAREN) {
+		if (Intr || Readerr) {
+			unprot(1);
+			return NIL;
+		}
+		if (EOFMARK == n)  {
+			unprot(1);
+			rderror("missing ')'", UNDEF);
+			return NIL;
+		}
+		else if (DOT == n) {
+			if (NIL == p) {
+				unprot(1);
+				rderror(badpair, UNDEF);
+				return NIL;
+			}
+			n = xread2();
+			cdr(p) = n;
+			if (RPAREN == n || xread2() != RPAREN) {
+				unprot(1);
+				rderror(badpair, UNDEF);
+				return NIL;
+			}
+			Inlist--;
+			return unprot(1);
+		}
+		car(a) = n;
+		p = a;
+		n = xread2();
+		if (n != RPAREN) {
+			Tmp = n;
+			new = cons3(NIL, NIL, CONST_TAG);
+			Tmp = NIL;
+			cdr(a) = new;
+			a = cdr(a);
+		}
+	}
+	Inlist--;
+	return unprot(1);
+}
+
+full rdvec(void) {
+	return listvec(rdlist(), 1);
+}
+
+full pos(int p, char *s) {
+	full	i;
+
+	i = 0;
+	for (; *s; s++) {
+		if (p == *s) return i;
+		i++;
+	}
+	return NIL;
+}
+
+full scanfix(char *s, full r, int of) {
+	ifull	v, g;
+	full	i;
+	char	*p;
+	char	d[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+	g = 1;
+	p = s;
+	if ('+' == *p) {
+		p++;
+	}
+	else if ('-' == *p) {
+		p++;
+		g = -1;
+	}
+	v = 0;
+	while (*p) {
+		i = pos(tolower(*p), d);
+		if (i == NIL || i >= r) return NIL;
+		if (	v > SSIZE_MAX/(ifull)r ||
+			(v > 0 && add_ovfl(v*(ifull)r, i)) ||
+			(v < 0 && sub_ovfl(v*(ifull)r, i)))
+		{
+			if (!of) return NIL;
+			rderror("fixnum too big", mkstr(s, strlen(s)));
+		}
+		else if (v < 0)
+			v = v*(ifull)r - (ifull)i;
+		else
+			v = v*(ifull)r + (ifull)i;
+		p++;
+		if (g) v *= g;
+		g = 0;
+	}
+	if (g) return NIL;
+	return mkfix((full)v);
+}
+
+full rdsymfix(full _c, full r, int sym) {
+	char	name[TOKLEN+1];
+	full	i, n;
+	/* CAST: a character (as int type) is expected */
+	int	c = (int)_c;
+
+	for (i=0; i<TOKLEN; i++) {
+		if (!symbolic(c)) break;
+		name[i] = (char)tolower(c);
+		c = readc();
+	}
+	name[i] = 0;
+	rejectc(c);
+	if (TOKLEN == i) rderror("symbol or fixnum too long",
+				mkstr(name, strlen(name)));
+	n = scanfix(name, r, 1);
+	if (n != NIL) return n;
+	if (!sym) rderror("invalid digits after #radixR",
+				mkstr(name, strlen(name)));
+	if ('t' == name[0] && 0 == name[1])
+		return TRUE;
+	if (!strcmp(name, "nil"))
+		return NIL;
+	return symref(name);
+}
+
+full rdfix(full c) {
+	full	r;
+
+	r = 0;
+	while (isdigit(c)) {
+		r = r*10 + c - '0';
+		/* CAST */
+		c = (full)readc();
+	}
+	if (c != 'r') rderror("'R' expected after #radix", UNDEF);
+	if (r < 2 || r > 36) rderror("bad radix in #radixR", mkfix(r));
+	/* CAST */
+	c = (full)readc();
+	return rdsymfix(c, r, 0);
+}
+
+full rdstr(void) {
+	char	name[TOKLEN+1];
+	int	j, c, u, v;
+	full	i, n;
+
+	c = readc();
+	u = 0;
+	for (i=0; i<TOKLEN; i++) {
+		if (Intr || Readerr) return NIL;
+		if ('"' == c) break;
+		if ('\n' == c) Line++;
+		if (EOF == c) rderror("EOF in string", UNDEF);
+		if ('\\' == c) {
+			c = readc();
+			if ('\\' == c || '"' == c) {
+				/**/
+			}
+			else if ('t' == c) {
+				c = '\t';
+			}
+			else if ('n' == c) {
+				c = '\n';
+			}
+			else if (octalp(c)) {
+				v = 0;
+				j = 0;
+				while (j < 3 && octalp(c)) {
+					v = v * 8 + c-'0';
+					c = readc();
+					j++;
+				}
+				rejectc(c);
+				/* CAST */
+				if (v > 255) rderror("invalid char", mkfix((full)v));
+				c = v;
+			}
+			else if (0 == u) {
+				u = c;
+			}
+		}
+		name[i] = (char)c;
+		c = readc();
+	}
+	name[i] = 0;
+	if (u) rderror("unknown slash sequence", mkchar(u));
+	if (i >= TOKLEN) rderror("string too long", mkstr(name, i));
+	if (u) return NIL;
+	n = mkstr(name, i);
+	tag(n) |= CONST_TAG;
+	return n;
+}
+
+full rdquote(full q) {
+	full	n;
+
+	Quoting++;
+	n = xread2();
+	Quoting--;
+	return cons(q, cons(n, NIL));
+}
+
+full meta(void) {
+	int	c, cmd;
+	full	i, n, cmdsym;
+	char	s[128];
+
+	cmd = tolower(readc());
+	c = readc();
+	while (' ' == c) c = readc();
+	i = 0;
+	while (c != '\n' && c != EOF) {
+		if (i < sizeof(s) - 6)
+			s[i++] = (char)c;
+		c = readc();
+	}
+	rejectc(c);
+	s[i] = 0;
+	if ('l' == cmd) strcat(s, ".ls9");
+	n = mkstr(s, strlen(s));
+	n = 0 == i? NIL: cons(n, NIL);
+	protect(n);
+	switch (cmd) {
+	case 'c':	cmdsym = symref("syscmd"); break;
+	case 'h':	cmdsym = symref("help"); break;
+	case 'l':	cmdsym = P_load; break;
+	default: 	prints(",c = syscmd"); nl();
+			prints(",h = help"); nl();
+			prints(",l = load"); nl();
+			return NIL;
+	}
+	unprot(1);
+	return cons(cmdsym, n);
+}
+
+full xread2(void) {
+	int	c;
+
+	c = readc();
+	while (1) {
+		while (' ' == c || '\t' == c || '\n' == c || '\r' == c) {
+			if (Intr || Readerr) return NIL;
+			if ('\n' == c) Line++;
+			c = readc();
+		}
+		if (c != ';') break;
+		while (c != '\n' && c != EOF)
+			c = readc();
+	}
+	if (Intr || Readerr) return NIL;
+	if (EOF == c) {
+		return EOFMARK;
+	}
+	else if ('#' == c) {
+		c = readc();
+		if ('\\' == c) return rdchar();
+		else if (LP == c) return rdvec();
+		/* CAST */
+		else if (isdigit(c)) return rdfix((full)c);
+		else rderror("bad # syntax", mkchar(c));
+	}
+	else if ('"' == c) {
+		return rdstr();
+	}
+	else if (LP == c) {
+		return rdlist();
+	}
+	else if (RP == c) {
+		if (!Inlist) rderror("unexpected ')'", UNDEF);
+		return RPAREN;
+	}
+	else if ('\'' == c) {
+		return rdquote(S_quote);
+	}
+	else if ('`' == c || '@' == c) {
+		return rdquote(S_qquote);
+	}
+	else if (',' == c) {
+		if (!Inlist && !Quoting) return meta();
+		c = readc();
+		if ('@' == c) return rdquote(S_splice);
+		/* CAST */
+		rejectc(c);
+		return rdquote(S_unquote);
+	}
+	else if ('.' == c) {
+		if (!Inlist) rderror("unexpected '.'", UNDEF);
+		return DOT;
+	}
+	else if (symbolic(c)) {
+		/* CAST */
+		return rdsymfix((full)c, 10, 1);
+	}
+	else {
+		/* CAST */
+		rderror("funny input character, code", mkfix((full)c));
+	}
+	return NIL;
+}
+
+full xread(void) {
+	full	x;
+
+	Inlist = 0;
+	Quoting = 0;
+	Readerr = NULL;
+	x = xread2();
+	if (Intr) error("aborted", UNDEF);
+	return x;
+}
+@

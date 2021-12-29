@@ -27,6 +27,52 @@ nil t
 (defun (cdddr x) (cdr (cddr x)))
 
 (defun (list . x) x)
+
+; quasiquote (qquote) is not defined yet
+(defmac (assert0 a)
+	(list
+		'if
+		(list
+			'eval
+			(list 'quote a)
+			)
+		t
+		(list
+			'error
+			(list
+				'format
+				(list
+					'list
+					(list 'quote 'assertion-failure)
+					(list 'quote a)
+					)
+				)
+			)
+		)
+	)
+
+(assert0 (eq 'a 'a))
+
+(assert0 (eq 1 1))
+
+(assert0 (< 0 1))
+(assert0 (<= 0 1))
+(assert0 (<= 1 1))
+(assert0 (= 1 1))
+(assert0 (>= 1 1))
+(assert0 (>= 2 1))
+(assert0 (> 2 1))
+
+(assert0 (< -1 0))
+(assert0 (<= -1 0))
+(assert0 (<= -1 -1))
+(assert0 (= -1 -1))
+(assert0 (>= -1 -1))
+(assert0 (>= -1 -2))
+(assert0 (> -1 -2))
+
+(princ "All basic assertions passed!\n")
+
 (defun (vector . x) (listvec x))
 (defun (string . x) (liststr x))
 

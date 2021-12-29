@@ -1,0 +1,54 @@
+
+Startup and initialization
+
+<<ls9 impl>>=
+void init(void) {
+	int	i;
+
+	for (i=2; i<NPORTS; i++) Ports[i] = NULL;
+	Ports[0] = stdin;  Port_flags[0] = LOCK_TAG;
+	Ports[1] = stdout; Port_flags[1] = LOCK_TAG;
+	Ports[2] = stderr; Port_flags[2] = LOCK_TAG;
+	alloc_nodepool();
+	alloc_vecpool();
+	gcv();
+	initrts();
+	clrtrace();
+	Nullvec = newvec(T_VECTOR, 0);
+	Nullstr = newvec(T_STRING, 1);
+	Blank = mkchar(' ');
+	Zero = mkfix(0);
+	One = mkfix(1);
+	Ten = mkfix(10);
+	Symbols = mkvec(CHUNKSIZE);
+	Symhash = mkht(CHUNKSIZE);
+	Obhash = mkht(CHUNKSIZE);
+	Obarray = mkvec(CHUNKSIZE);
+	Obmap = mkstr("", CHUNKSIZE);
+	memset(string(Obmap), OBFREE, CHUNKSIZE);
+	symref("?");
+	I_a = symref("a");
+	I_e = symref("e");
+	I_arg = symref("%arg");
+	I_closure = symref("%closure");
+	I_ref = symref("%ref");
+	<<ls9 init>>
+	bindnew(S_errtag, NIL);
+	bindnew(S_errval, NIL);
+	bindnew(S_imagefile, NIL);
+	bindnew(S_quiet, NIL);
+	bindnew(S_starstar, NIL);
+	bindnew(S_start, NIL);
+}
+
+void start(void) {
+	full	n;
+
+	if (setjmp(Restart)) return;
+	if (!Quiet) signal(SIGINT, kbdintr);
+	n = assq(S_start, Glob);
+	if (NIL == n || closurep(cadr(n)) == 0) return;
+	n = cons(cadr(n), NIL);
+	eval(n, 0);
+}
+@

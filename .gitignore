@@ -1,0 +1,9 @@
+*~
+*.o
+*.stamp
+/ls9
+/ls9.image
+/ls9-*.image
+/dump-image.sh
+/*_protos.h
+/ls9.c
