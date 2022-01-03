@@ -25,9 +25,6 @@ full	Ten = NIL;
 void emit(full x) {
 	full	n, i, k;
 	byte	*vp, *vn;
-
-	/* fprintf(stderr, "**************** emit: 0x%02"__PRIxSIZE"\n", x); */
-
 	if (Here >= stringlen(cdr(Emitbuf))) {
 		protect(x);
 		k = stringlen(cdr(Emitbuf));

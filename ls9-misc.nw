@@ -84,7 +84,6 @@ full vconc(full x) {
 
 full vref(full x, full n) {
 	full	i;
-	/* fprintf(stderr, "**************** vref: %"PRIxFULL"   %"PRIxFULL"\n", x, n); */
 	if (!vectorp(x)) expect("vref", "vector", x);
 	if (!fixp(n)) expect("vref", "fixnum", n);
 	i = fixval(n);

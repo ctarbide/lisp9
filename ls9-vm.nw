@@ -298,20 +298,16 @@ void run(full x) {
 		Ip = op1();
 		break;
 	case OP_BRF:
-		/* fprintf(stderr, "**************** OP_BRF: Acc: %"PRIxFULL"\n", Acc); */
 		if (NIL == Acc)
 			Ip = op1();
 		else
 			skip(ISIZE1);
-		/* fprintf(stderr, "**************** OP_BRF: Ip: %"PRIxFULL"\n", Ip); */
 		break;
 	case OP_BRT:
-		/* fprintf(stderr, "**************** OP_BRT: Acc: %"PRIxFULL"\n", Acc); */
 		if (NIL == Acc)
 			skip(ISIZE1);
 		else
 			Ip = op1();
-		/* fprintf(stderr, "**************** OP_BRT: Ip: %"PRIxFULL"\n", Ip); */
 		break;
 	case OP_HALT:
 		return;

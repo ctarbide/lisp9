@@ -101,7 +101,6 @@ void lteq(full x, full y) {
 }
 
 void equal(full x, full y) {
-	/* fprintf(stderr, "**************** equal: %"PRIxFULL"   %"PRIxFULL"\n", x, y); */
 	if (!fixp(x)) expect("=", "fixnum", x);
 	if (!fixp(y)) expect("=", "fixnum", y);
 	if (fixval(y) != fixval(x)) stackset(Sp-1, NIL);
