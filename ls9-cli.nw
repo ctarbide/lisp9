@@ -73,27 +73,23 @@ full argvec(char **argv) {
 	return unprot(1);
 }
 
-/* hint compiler about clobbered variables
- */
-int setjmp_wrap(jmp_buf env)
-{
-	return setjmp(env);
-}
-
 int main(int argc, char **argv) {
-	int	i, j, k, usrimg, doload;
+	volatile int	i0, doload;
+	int	i, j, k, usrimg;
 	char	*s;
 	char	*imgfile;
 
 	imgfile = IMAGEFILE;
 	usrimg = 0;
 	doload = 1;
-	if (setjmp_wrap(Restart) != 0) exit(EXIT_FAILURE);
+	if (setjmp(Restart)) {
+		exit(EXIT_FAILURE);
+	}
 	init();
-	i = 1;
+	i0 = 1;
 	if (argc > 2 && strcmp(argv[1], "-i") == 0) {
 		imgfile = argv[2];
-		i = 3;
+		i0 = 3;
 		usrimg = 1;
 	}
 	if (existsp(imgfile) != NIL) {
@@ -106,12 +102,15 @@ int main(int argc, char **argv) {
 		fatal("cannot open image file");
 	}
 	else {
-		if (setjmp_wrap(Restart) != 0)
+		if (setjmp(Restart) != 0) {
 			fatal("could not load library");
+		}
 		loadfile(IMAGESRC);
 	}
-	if (setjmp_wrap(Restart) != 0) exit(EXIT_FAILURE);
-	for (; i<argc; i++) {
+	if (setjmp(Restart) != 0) {
+		exit(EXIT_FAILURE);
+	}
+	for (i=i0; i<argc; i++) {
 		if (argv[i][0] != '-') break;
 		if ('-' == argv[i][1]) {
 			doload = 0;
@@ -150,7 +149,9 @@ int main(int argc, char **argv) {
 	}
 	Argv = NULL == argv[i]? NIL: argvec(&argv[i+1]);
 	start();
-	if (setjmp_wrap(Restart) != 0) exit(EXIT_FAILURE);
+	if (setjmp(Restart) != 0) {
+		exit(EXIT_FAILURE);
+	}
 	if (doload && argv[i] != NULL) {
 		loadfile(argv[i]);
 		exit(EXIT_SUCCESS);
