@@ -130,13 +130,17 @@ char *dumpimg(char *path) {
 		}
 		i++;
 	}
-	if (	fwrite(Car, 1, sizeof(full) * NNODES, f)
-		 != sizeof(full) * NNODES ||
-		fwrite(Cdr, 1, sizeof(full) * NNODES, f)
-		 != sizeof(full) * NNODES ||
-		fwrite(Tag, 1, NNODES, f) != NNODES||
-		fwrite(Vectors, 1, sizeof(full) * NVCELLS, f)
-		 != sizeof(full) * NVCELLS)
+@
+
+Writing 1 byte or sizeof(full) shouldn't matter, a well implemented libc will
+actively minimize system calls and write blocks with sizes optmized for the
+os/platform.
+
+<<ls9 impl>>=
+	if (	fwrite(Car, sizeof(full), NNODES, f) != NNODES ||
+		fwrite(Cdr, sizeof(full), NNODES, f) != NNODES ||
+		fwrite(Tag, 1, NNODES, f) != NNODES ||
+		fwrite(Vectors, sizeof(full), NVCELLS, f) != NVCELLS)
 	{
 		fclose(f);
 		return "image dump failed";
@@ -211,13 +215,10 @@ char *loadimg(char *path) {
 			return s;
 		i++;
 	}
-	if (	(fread(Car, 1, sizeof(full) * NNODES, f)
-		  != sizeof(full) * NNODES ||
-		 fread(Cdr, 1, sizeof(full) * NNODES, f)
-		  != sizeof(full) * NNODES ||
+	if (	(fread(Car, sizeof(full), NNODES, f) != NNODES ||
+		 fread(Cdr, sizeof(full), NNODES, f) != NNODES ||
 		 fread(Tag, 1, NNODES, f) != NNODES ||
-		 fread(Vectors, 1, sizeof(full) * NVCELLS, f)
-		  != sizeof(full) * NVCELLS ||
+		 fread(Vectors, sizeof(full), NVCELLS, f) != NVCELLS ||
 		 fgetc(f) != EOF))
 	{
 		fclose(f);
