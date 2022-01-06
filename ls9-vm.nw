@@ -1,7 +1,7 @@
 
 Abstract machine
 
-<<ls9 definitions>>=
+<<ls9 enums>>=
 enum {	OP_ILL, OP_APPLIS, OP_APPLIST, OP_APPLY, OP_TAILAPP, OP_QUOTE,
 	OP_ARG, OP_REF, OP_PUSH, OP_PUSHTRUE, OP_PUSHVAL, OP_POP,
 	OP_DROP, OP_JMP, OP_BRF, OP_BRT, OP_HALT, OP_CATCHSTAR,
@@ -65,6 +65,27 @@ enum {	OP_ILL, OP_APPLIS, OP_APPLIST, OP_APPLY, OP_TAILAPP, OP_QUOTE,
 	 '\n' == (c) || \
 	 '\r' == (c) || \
 	 '\f' == (c))
+@
+
+<<noexpand>>=
+#noexpand ins
+#noexpand op1
+#noexpand op2
+#noexpand skip
+#noexpand clear
+#noexpand box
+#noexpand boxref
+#noexpand boxset
+#noexpand stackref
+#noexpand stackset
+#noexpand envbox
+#noexpand argbox
+#noexpand argref
+#noexpand arg
+#noexpand closure_ip
+#noexpand closure_env
+#noexpand closure_prog
+#noexpand whitespc
 @
 
 <<ls9 globals>>=

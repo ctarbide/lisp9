@@ -1,15 +1,15 @@
 
 Heap image I/O
 
-<<ls9 definitions>>=
+<<ls9 structs>>=
 struct imghdr {
 	char	magic[5];		/* "LISP9"	*/
 	char	version[8];		/* "yyyymmdd"	*/
 	char	full_size[1];		/* size + '0'	*/
-#if FULL_BITS == 32
+#if __EXPAND__FULL_BITS == 32
 	char	byte_order[4];		/* e.g. "4321"	*/
 	char	pad[14];
-#elif FULL_BITS == 64
+#elif __EXPAND__FULL_BITS == 64
 	char	byte_order[8];		/* e.g. "87654321"	*/
 	char	pad[10];
 #else
@@ -18,7 +18,7 @@ struct imghdr {
 };
 @
 
-<<ls9 globals>>=
+<<ls9 globals - Imagevars>>=
 full	*Imagevars[] = {
 		&Freelist, &Freevec, &Symbols, &Symhash, &Symptr,
 		&Rts, &Glob, &Macros, &Obhash, &Obarray, &Obmap, NULL };
@@ -98,10 +98,10 @@ char *dumpimg(char *path) {
 	memcpy(m.magic, "LISP9", sizeof(m.magic));
 	memcpy(m.version, VERSION, sizeof(m.version));
 	m.full_size[0] = sizeof(full)+'0';
-#if FULL_BITS == 32
+#if __EXPAND__FULL_BITS == 32
 	n = UINT32_C(0x31323334);
 	memcpy(m.byte_order, &n, FULL_BYTES);
-#elif FULL_BITS == 64
+#elif __EXPAND__FULL_BITS == 64
 	n = UINT64_C(0x3132333435363738);
 	memcpy(m.byte_order, &n, FULL_BYTES);
 #else
@@ -182,12 +182,12 @@ char *loadimg(char *path) {
 		return "wrong full size";
 	}
 	memcpy(&n, m.byte_order, sizeof(full));
-#if FULL_BITS == 32
+#if __EXPAND__FULL_BITS == 32
 	if (n != UINT32_C(0x31323334)) {
 		fclose(f);
 		return "wrong byte order";
 	}
-#elif FULL_BITS == 64
+#elif __EXPAND__FULL_BITS == 64
 	if (n != UINT64_C(0x3132333435363738)) {
 		fclose(f);
 		return "wrong byte order";

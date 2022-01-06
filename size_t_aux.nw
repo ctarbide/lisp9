@@ -11,8 +11,10 @@ References:
 Minimal includes and compilers handling.
 
 <<size_t_aux.h>>=
+#ifndef __RTT__
 #include <limits.h>
 #include <inttypes.h>
+#endif
 #ifdef _MSC_VER
 #if (_MSC_VER >= 1100 && _MSC_VER < 1900)
 /* MSVC++  5.0, _MSC_VER == 1100, Visual Studio 5.0
@@ -32,11 +34,19 @@ Minimal includes and compilers handling.
 #define __PRIiSIZE "zi"
 #endif
 #else /* not _MSC_VER */
+#if __GNUC__ > 2
 #define __PRIuSIZE "zu"
 #define __PRIxSIZE "zx"
 #define __PRIXSIZE "zX"
 #define __PRIdSIZE "zd"
 #define __PRIiSIZE "zi"
+#else /* __GNUC__ <= 2 */
+#define __PRIuSIZE "u"
+#define __PRIxSIZE "x"
+#define __PRIXSIZE "X"
+#define __PRIdSIZE "d"
+#define __PRIiSIZE "i"
+#endif /* __GNUC__ <= 2 */
 #endif
 @
 
@@ -197,10 +207,13 @@ C89_STATIC_ASSERT(sizeof(SSIZE_T) == sizeof(size_t), "SSIZE_T can hold a size_t 
 
 A simple test program to validate.
 
+nofake -Rtest.c size_t_aux.nw | gcc -Wall -Wextra -x c - -o size_t_aux_test
+
 <<test.c>>=
 #include <stdio.h>
 #include <stdlib.h>
-#include "size_t_aux.h"
+#include <stddef.h>
+<<size_t_aux.h>>
 int
 main(int argc, char **argv)
 {
@@ -209,6 +222,8 @@ main(int argc, char **argv)
 	printf("__PRIXSIZE:\t\t\"%s\"\n", __PRIXSIZE);
 	printf("__PRIdSIZE:\t\t\"%s\"\n", __PRIdSIZE);
 	printf("__PRIiSIZE:\t\t\"%s\"\n", __PRIiSIZE);
+	printf(" CHAR_MAX:\t\t%i\n",  CHAR_MAX);
+	printf("UCHAR_MAX:\t\t%u\n", UCHAR_MAX);
 	printf(" SHRT_MAX:\t\t%i\n",  SHRT_MAX);
 	printf("USHRT_MAX:\t\t%u\n", USHRT_MAX);
 	printf(" INT_MAX:\t\t%i\n",  INT_MAX);
@@ -230,6 +245,9 @@ main(int argc, char **argv)
 #else
 	printf("Using unusual %u bytes for size_t.\n", SIZE_BYTES);
 #endif
+
+	(void)argc;
+	(void)argv;
 
 	return 0;
 }

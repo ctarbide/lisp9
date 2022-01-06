@@ -10,6 +10,10 @@ Printer
 	(car(x) == (q) && cdr(x) != NIL && NIL == cddr(x))
 @
 
+<<noexpand>>=
+#noexpand quoted
+@
+
 <<ls9 impl>>=
 full abs_wrap(ifull x)
 {

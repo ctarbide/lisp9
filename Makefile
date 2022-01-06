@@ -1,80 +1,66 @@
 
-NOFAKE = tools/nofake
+# automatically generated from Makefile.nw
 
-CC = gcc
+SH = sh -eu
 
-# WIDTH = -m32
-WIDTH = -m64
+SOURCES = \
+    Makefile.nw ls9-arith.nw ls9-cli.nw ls9-clsconv.nw ls9-compiler.nw \
+    ls9-error.nw ls9-gc.nw ls9-globalenv.nw ls9-ht.nw ls9-img.nw \
+    ls9-io.nw ls9-list.nw ls9-litpool.nw ls9-macroexpand.nw ls9-macros.nw \
+    ls9-misc.nw ls9-printer.nw ls9-reader.nw ls9-repl.nw ls9-scripts.nw \
+    ls9-startup.nw ls9-strings.nw ls9-syncheck.nw ls9-types.nw ls9-vm.nw \
+    ls9.nw size_t_aux.nw
 
-OPTFLAGS = -O2
-# OPTFLAGS = -O3
-# OPTFLAGS = -O0
+TARGETS = listings.nw \
+    dump-image.sh lisp9.ps lisp9.tr ls9 ls9.c \
+    ls9.image
 
-WERROR = -Werror -fmax-errors=5
+.PHONY: all
+all: $(TARGETS)
 
-CFLAGS = $(WIDTH) -ggdb3 $(OPTFLAGS) -std=c99 -pedantic \
-    -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes \
-    -Wshadow -Wconversion -Wdeclaration-after-statement \
-    -Wno-unused-parameter \
-    $(WERROR)
+listings.nw: $(SOURCES)
+	rm -f listings.nw
+	nofake-exec.sh --error -R'generate listings.nw' $^ -- $(SH) >listings.nw
+	chmod 0444 listings.nw
 
-all:	ls9 # prolog # lisp9.ps
+dump-image.sh: listings.nw \
+    ls9 ls9.nw
+	@SH='$(SH)' nofake-exec.sh --error -R'run recipe' --aa-- 'dump-image.sh' Makefile.nw listings.nw -- $(SH)
 
-ls9.c: size_t_aux.nw ls9*.nw
-	NOFAKE='$(NOFAKE)' $(NOFAKE).sh -L -Rls9.c -ols9.c size_t_aux.nw ls9*.nw
+lisp9.ps: listings.nw \
+    lisp9.tr ls9.nw
+	@SH='$(SH)' nofake-exec.sh --error -R'run recipe' --aa-- 'lisp9.ps' Makefile.nw listings.nw -- $(SH)
 
-ls9_protos.h: ls9.c
-	cproto -ev -DINSIDE_CPROTO ls9.c > .tmp.ls9_protos.h
-	mv -f .tmp.ls9_protos.h ls9_protos.h
-	chmod a-w ls9_protos.h
+lisp9.tr: listings.nw \
+    lisp9.txt ls9 ls9.nw
+	@SH='$(SH)' nofake-exec.sh --error -R'run recipe' --aa-- 'lisp9.tr' Makefile.nw listings.nw -- $(SH)
 
-ls9.o: ls9.c ls9_protos.h
-	$(CC) $(CFLAGS) -c ls9.c
+ls9: listings.nw \
+    ls9.c ls9.nw
+	@SH='$(SH)' nofake-exec.sh --error -R'run recipe' --aa-- 'ls9' Makefile.nw listings.nw -- $(SH)
 
-ls9:	ls9.o
-	$(CC) $(CFLAGS) -o ls9 ls9.o
-	CHMOD='chmod 0555' NOFAKE='$(NOFAKE)' $(NOFAKE).sh -Rdump-image.sh \
-		ls9.nw ls9-scripts.nw -odump-image.sh
-	./dump-image.sh
+ls9.c: listings.nw \
+    ls9-arith.nw ls9-cli.nw ls9-clsconv.nw ls9-compiler.nw ls9-error.nw \
+    ls9-gc.nw ls9-globalenv.nw ls9-ht.nw ls9-img.nw ls9-io.nw \
+    ls9-list.nw ls9-litpool.nw ls9-macroexpand.nw ls9-macros.nw ls9-misc.nw \
+    ls9-printer.nw ls9-reader.nw ls9-repl.nw ls9-scripts.nw ls9-startup.nw \
+    ls9-strings.nw ls9-syncheck.nw ls9-types.nw ls9-vm.nw ls9.nw \
+    size_t_aux.nw
+	@SH='$(SH)' nofake-exec.sh --error -R'run recipe' --aa-- 'ls9.c' Makefile.nw listings.nw -- $(SH)
 
-lisp9.tr:	lisp9.txt
-	./ls9 src/print.ls9 -T -C -p 60 -l 6 -m -4 -t "LISP9 REFERENCE MANUAL" \
-		lisp9.txt >lisp9.tr
+ls9.image: listings.nw \
+    dump-image.sh ls9.nw
+	@SH='$(SH)' nofake-exec.sh --error -R'run recipe' --aa-- 'ls9.image' Makefile.nw listings.nw -- $(SH)
 
-lisp9.ps:	lisp9.tr
-	groff -Tps -P-p11i,8.5i lisp9.tr >lisp9.ps
+.PHONY: test
+test: listings.nw \
+    ls9 ls9.nw
+	@SH='$(SH)' nofake-exec.sh --error -R'run recipe (.PHONY)' --aa-- 'test' Makefile.nw listings.nw -- $(SH)
 
-test:	ls9 ls9.image
-	./ls9 test.ls9
+.PHONY: touch
+touch:
+	-touch -c $(TARGETS)
 
-ptest:	ls9 prolog
-	./ls9 -i prolog -- -q <src/test.pl9 > src/test.out
-	diff -u src/test.OK src/test.out && rm src/test.out
-
-zebra:	ls9 prolog src/zebra.pl9
-	echo "prlist([])." \
-	     "prlist([H|T]) :- write(H), nl, prlist(T)." \
-	     ":- nl, zebra(H), !, prlist(H), fail." \
-	     | ./ls9 -i prolog -- -q -c src/zebra.pl9
-
-prolog:	ls9 src/prolog.ls9 src/prolog.pl9
-	echo "(defun (start) (prolog) (quit)) (dump-image \"prolog\")" \
-		| ./ls9 -ql src/prolog.ls9
-
-arc:	clean
-	./archive.sh
-
-dist:   clean
-	./release.sh
-
-csums:
-	csum -u <_csums >_csums.new
-	mv _csums.new _csums
-
-mksums:	clean
-	find . -type f | grep -v _csums |grep -v $A | csum >_csums
-
+.PHONY: clean
 clean:
-	rm -f ls9.c ls9_protos.h ls9 ls9.image ls9-*.image \
-		dump-image.sh archive.sh release.sh *.oimage prolog \
-		lisp9.ps lisp9.tr lisp9.ps $A $R a.out *.core
+	-rm -f $(TARGETS)

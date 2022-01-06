@@ -1,0 +1,169 @@
+automatically generated from Makefile.nw and sources below
+
+<<set phony targets>>=
+set -- "$@" 'test';
+<<push phony targets>>=
+push(@$listref, q{test});
+<<set sources>>=
+set -- "$@" 'Makefile.nw';
+set -- "$@" 'ls9-arith.nw';
+set -- "$@" 'ls9-cli.nw';
+set -- "$@" 'ls9-clsconv.nw';
+set -- "$@" 'ls9-compiler.nw';
+set -- "$@" 'ls9-error.nw';
+set -- "$@" 'ls9-gc.nw';
+set -- "$@" 'ls9-globalenv.nw';
+set -- "$@" 'ls9-ht.nw';
+set -- "$@" 'ls9-img.nw';
+set -- "$@" 'ls9-io.nw';
+set -- "$@" 'ls9-list.nw';
+set -- "$@" 'ls9-litpool.nw';
+set -- "$@" 'ls9-macroexpand.nw';
+set -- "$@" 'ls9-macros.nw';
+set -- "$@" 'ls9-misc.nw';
+set -- "$@" 'ls9-printer.nw';
+set -- "$@" 'ls9-reader.nw';
+set -- "$@" 'ls9-repl.nw';
+set -- "$@" 'ls9-scripts.nw';
+set -- "$@" 'ls9-startup.nw';
+set -- "$@" 'ls9-strings.nw';
+set -- "$@" 'ls9-syncheck.nw';
+set -- "$@" 'ls9-types.nw';
+set -- "$@" 'ls9-vm.nw';
+set -- "$@" 'ls9.nw';
+set -- "$@" 'size_t_aux.nw';
+<<push sources>>=
+push(@$listref, q{Makefile.nw});
+push(@$listref, q{ls9-arith.nw});
+push(@$listref, q{ls9-cli.nw});
+push(@$listref, q{ls9-clsconv.nw});
+push(@$listref, q{ls9-compiler.nw});
+push(@$listref, q{ls9-error.nw});
+push(@$listref, q{ls9-gc.nw});
+push(@$listref, q{ls9-globalenv.nw});
+push(@$listref, q{ls9-ht.nw});
+push(@$listref, q{ls9-img.nw});
+push(@$listref, q{ls9-io.nw});
+push(@$listref, q{ls9-list.nw});
+push(@$listref, q{ls9-litpool.nw});
+push(@$listref, q{ls9-macroexpand.nw});
+push(@$listref, q{ls9-macros.nw});
+push(@$listref, q{ls9-misc.nw});
+push(@$listref, q{ls9-printer.nw});
+push(@$listref, q{ls9-reader.nw});
+push(@$listref, q{ls9-repl.nw});
+push(@$listref, q{ls9-scripts.nw});
+push(@$listref, q{ls9-startup.nw});
+push(@$listref, q{ls9-strings.nw});
+push(@$listref, q{ls9-syncheck.nw});
+push(@$listref, q{ls9-types.nw});
+push(@$listref, q{ls9-vm.nw});
+push(@$listref, q{ls9.nw});
+push(@$listref, q{size_t_aux.nw});
+<<set targets>>=
+set -- "$@" 'dump-image.sh';
+set -- "$@" 'lisp9.ps';
+set -- "$@" 'lisp9.tr';
+set -- "$@" 'ls9';
+set -- "$@" 'ls9.c';
+set -- "$@" 'ls9.image';
+<<push targets>>=
+push(@$listref, q{dump-image.sh});
+push(@$listref, q{lisp9.ps});
+push(@$listref, q{lisp9.tr});
+push(@$listref, q{ls9});
+push(@$listref, q{ls9.c});
+push(@$listref, q{ls9.image});
+<<set dump-image.sh deps>>=
+set -- "$@" 'ls9';
+set -- "$@" 'ls9.nw';
+<<push dump-image.sh deps>>=
+push(@$listref, q{ls9});
+push(@$listref, q{ls9.nw});
+<<set lisp9.ps deps>>=
+set -- "$@" 'lisp9.tr';
+set -- "$@" 'ls9.nw';
+<<push lisp9.ps deps>>=
+push(@$listref, q{lisp9.tr});
+push(@$listref, q{ls9.nw});
+<<set lisp9.tr deps>>=
+set -- "$@" 'lisp9.txt';
+set -- "$@" 'ls9';
+set -- "$@" 'ls9.nw';
+<<push lisp9.tr deps>>=
+push(@$listref, q{lisp9.txt});
+push(@$listref, q{ls9});
+push(@$listref, q{ls9.nw});
+<<set ls9 deps>>=
+set -- "$@" 'ls9.c';
+set -- "$@" 'ls9.nw';
+<<push ls9 deps>>=
+push(@$listref, q{ls9.c});
+push(@$listref, q{ls9.nw});
+<<set ls9.c deps>>=
+set -- "$@" 'ls9-arith.nw';
+set -- "$@" 'ls9-cli.nw';
+set -- "$@" 'ls9-clsconv.nw';
+set -- "$@" 'ls9-compiler.nw';
+set -- "$@" 'ls9-error.nw';
+set -- "$@" 'ls9-gc.nw';
+set -- "$@" 'ls9-globalenv.nw';
+set -- "$@" 'ls9-ht.nw';
+set -- "$@" 'ls9-img.nw';
+set -- "$@" 'ls9-io.nw';
+set -- "$@" 'ls9-list.nw';
+set -- "$@" 'ls9-litpool.nw';
+set -- "$@" 'ls9-macroexpand.nw';
+set -- "$@" 'ls9-macros.nw';
+set -- "$@" 'ls9-misc.nw';
+set -- "$@" 'ls9-printer.nw';
+set -- "$@" 'ls9-reader.nw';
+set -- "$@" 'ls9-repl.nw';
+set -- "$@" 'ls9-scripts.nw';
+set -- "$@" 'ls9-startup.nw';
+set -- "$@" 'ls9-strings.nw';
+set -- "$@" 'ls9-syncheck.nw';
+set -- "$@" 'ls9-types.nw';
+set -- "$@" 'ls9-vm.nw';
+set -- "$@" 'ls9.nw';
+set -- "$@" 'size_t_aux.nw';
+<<push ls9.c deps>>=
+push(@$listref, q{ls9-arith.nw});
+push(@$listref, q{ls9-cli.nw});
+push(@$listref, q{ls9-clsconv.nw});
+push(@$listref, q{ls9-compiler.nw});
+push(@$listref, q{ls9-error.nw});
+push(@$listref, q{ls9-gc.nw});
+push(@$listref, q{ls9-globalenv.nw});
+push(@$listref, q{ls9-ht.nw});
+push(@$listref, q{ls9-img.nw});
+push(@$listref, q{ls9-io.nw});
+push(@$listref, q{ls9-list.nw});
+push(@$listref, q{ls9-litpool.nw});
+push(@$listref, q{ls9-macroexpand.nw});
+push(@$listref, q{ls9-macros.nw});
+push(@$listref, q{ls9-misc.nw});
+push(@$listref, q{ls9-printer.nw});
+push(@$listref, q{ls9-reader.nw});
+push(@$listref, q{ls9-repl.nw});
+push(@$listref, q{ls9-scripts.nw});
+push(@$listref, q{ls9-startup.nw});
+push(@$listref, q{ls9-strings.nw});
+push(@$listref, q{ls9-syncheck.nw});
+push(@$listref, q{ls9-types.nw});
+push(@$listref, q{ls9-vm.nw});
+push(@$listref, q{ls9.nw});
+push(@$listref, q{size_t_aux.nw});
+<<set ls9.image deps>>=
+set -- "$@" 'dump-image.sh';
+set -- "$@" 'ls9.nw';
+<<push ls9.image deps>>=
+push(@$listref, q{dump-image.sh});
+push(@$listref, q{ls9.nw});
+<<set test deps>>=
+set -- "$@" 'ls9';
+set -- "$@" 'ls9.nw';
+<<push test deps>>=
+push(@$listref, q{ls9});
+push(@$listref, q{ls9.nw});
+@

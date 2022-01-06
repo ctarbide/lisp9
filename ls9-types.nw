@@ -12,6 +12,17 @@ Special Objects
 #define CONST_TAG	0x80	/* Node is immutable */
 @
 
+<<noexpand>>=
+#noexpand ATOM_TAG
+#noexpand MARK_TAG
+#noexpand TRAV_TAG
+#noexpand VECTOR_TAG
+#noexpand PORT_TAG
+#noexpand USED_TAG
+#noexpand LOCK_TAG
+#noexpand CONST_TAG
+@
+
 <<ls9 definitions>>=
 #define NIL		((full)-1)
 #define TRUE		((full)(NIL - 1))
@@ -19,6 +30,15 @@ Special Objects
 #define UNDEF		((full)(NIL - 3))
 #define RPAREN		((full)(NIL - 4))
 #define DOT		((full)(NIL - 5))
+@
+
+<<noexpand>>=
+#noexpand NIL
+#noexpand TRUE
+#noexpand EOFMARK
+#noexpand UNDEF
+#noexpand RPAREN
+#noexpand DOT
 @
 
 Tagged data types
@@ -34,6 +54,19 @@ Tagged data types
 #define T_STRING	((full)(T_BYTECODE - 7))
 #define T_SYMBOL	((full)(T_BYTECODE - 8))
 #define T_VECTOR	((full)(T_BYTECODE - 9))
+@
+
+<<noexpand>>=
+#noexpand T_BYTECODE
+#noexpand T_CATCHTAG
+#noexpand T_CHAR
+#noexpand T_CLOSURE
+#noexpand T_FIXNUM
+#noexpand T_INPORT
+#noexpand T_OUTPORT
+#noexpand T_STRING
+#noexpand T_SYMBOL
+#noexpand T_VECTOR
 @
 
 <<ls9 macros>>=
@@ -57,6 +90,18 @@ Tagged data types
 #define sub_ovfl(a,b) \
 	((((ifull)(b) < 0) && ((ifull)(a) > IFULL_MAX + (ifull)(b))) || \
 	 (((ifull)(b) > 0) && ((ifull)(a) < IFULL_MIN + (ifull)(b))))
+@
+
+<<noexpand>>=
+#noexpand specialp
+#noexpand cons
+#noexpand mkatom
+#noexpand mkfix
+#noexpand mkchar
+#noexpand fixval
+#noexpand charval
+#noexpand add_ovfl
+#noexpand sub_ovfl
 @
 
 <<ls9 impl>>=

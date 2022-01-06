@@ -15,6 +15,13 @@ Reader
 	(isalpha(c) || isdigit(c) || (c && strchr("!$%^&*-/_+=~.?<>:", c)))
 @
 
+<<noexpand>>=
+#noexpand LP
+#noexpand RP
+#noexpand octalp
+#noexpand symbolic
+@
+
 <<ls9 globals>>=
 full	S_apply, S_def, S_defmac, S_defun, S_errtag,
 	S_errval, S_if, S_ifstar, S_imagefile, S_labels, S_lambda,

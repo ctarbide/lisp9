@@ -4,7 +4,7 @@ Memory management
 <<ls9 definitions>>=
 #define OBFREE		0
 #define OBALLOC		1
-#define	OBUSED		2
+#define OBUSED		2
 
 #define ISIZE0		1
 #define ISIZE1		3
@@ -15,10 +15,29 @@ Memory management
 #define RAW_VECDATA	2
 @
 
+<<noexpand>>=
+#noexpand OBFREE
+#noexpand OBALLOC
+#noexpand OBUSED
+
+#noexpand ISIZE0
+#noexpand ISIZE1
+#noexpand ISIZE2
+
+#noexpand RAW_VECLINK
+#noexpand RAW_VECSIZE
+#noexpand RAW_VECDATA
+@
+
 <<ls9 macros>>=
 #define fetcharg(a, i)	(full)(((a)[i] @<< 8) | (a)[(i)+1])
 
 #define protect(n) (Protected = cons((n), Protected))
+@
+
+<<noexpand>>=
+#noexpand fetcharg
+#noexpand protect
 @
 
 <<ls9 globals>>=
@@ -33,17 +52,9 @@ full	*Vectors = NULL;
 full	Freelist = NIL;
 full	Freevec = 0;
 
-full	*GC_roots[] = {
-		&Protected, &Symbols, &Symhash, &Prog, &Env, &Obhash,
-		&Obarray, &Obmap, &Cts, &Emitbuf, &Glob, &Macros, &Rts,
-		&Acc, &E0, &Ep, &Argv, &Tmp, &Tmp_car, &Tmp_cdr, &Files,
-		&Outstr, &Nullvec, &Nullstr, &Blank, &Zero, &One, &Ten,
-		NULL };
-
 full	Obarray, Obmap;
 
 int	GC_verbose = 0;
-full	*GC_roots[];
 full	Rts;
 full	Sp;
 
@@ -52,6 +63,18 @@ full	Tmp_car = NIL,
 
 full	Protected = NIL;
 full	Tmp = NIL;
+@
+
+Globals that makes reference to other globals must be singled out for later
+inclusion.
+
+<<ls9 globals - GC_roots>>=
+full	*GC_roots[] = {
+		&Protected, &Symbols, &Symhash, &Prog, &Env, &Obhash,
+		&Obarray, &Obmap, &Cts, &Emitbuf, &Glob, &Macros, &Rts,
+		&Acc, &E0, &Ep, &Argv, &Tmp, &Tmp_car, &Tmp_cdr, &Files,
+		&Outstr, &Nullvec, &Nullstr, &Blank, &Zero, &One, &Ten,
+		NULL };
 @
 
 <<ls9 impl>>=
@@ -262,7 +285,7 @@ full gc(void) {
 		}
 	}
 	if (GC_verbose) {
-		sprintf(buf, "GC: %"PRIuFULL" nodes reclaimed", k);
+		sprintf(buf, "GC: %lu nodes reclaimed", (unsigned long)k);
 		prints(buf); nl();
 		flush();
 	}
@@ -328,7 +351,7 @@ size_t gcv(void) {
 	}
 	k = (size_t)Freevec - to;
 	if (GC_verbose) {
-		sprintf(buf, "GCV: %"PRIuFULL" fulls reclaimed", k);
+		sprintf(buf, "GCV: %lu fulls reclaimed", (unsigned long)k);
 		prints(buf); nl();
 		flush();
 	}

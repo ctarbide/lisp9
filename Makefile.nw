@@ -1,0 +1,254 @@
+
+Limit the responsibilities of Makefile and delegate the heavy work back to
+sh/nofake as soon as possible.
+
+To generate/update Makefile, simply do:
+
+    nofake Makefile.nw | sh
+
+<<*>>=
+nofake-exec.sh --error -R'build Makefile' Makefile.nw <<Makefile.nw import>> -- sh -eu
+@
+
+<<Makefile prefix>>=
+Makefile
+@
+
+<<Makefile.nw import>>=
+ls9.nw
+<<sources>>=
+'<<Makefile prefix>>.nw'
+<<ls9.c deps>>
+@
+
+<<build Makefile>>=
+#!/bin/sh
+set -eu
+SH=${SH:-sh -eu}; export SH
+PERL=${PERL:-perl -wl}; export PERL
+<<function list_set_sources>>
+<<function indent_args>>
+nofake-exec.sh --error -R'generate build.sh' '<<Makefile prefix>>.nw' \
+    -- ${SH}
+set_sources=`list_set_sources`
+eval "set --; ${set_sources}"
+latest_mtime_in_sources=`perl -le'@times = map { (stat($_))[9] } @ARGV; print((sort @times)[-1])' -- "$@"`
+listings_mtime=`perl -sle'print(-f $f ? (stat $f)[9] : 0)' -- -f=listings.nw`
+if [ "${latest_mtime_in_sources}" -gt "${listings_mtime}" ]; then
+    rm -f listings.nw
+    nofake-exec.sh --error -R'generate listings.nw' "$@" -- ${SH} \
+        >.listings.nw
+    mv .listings.nw listings.nw
+    chmod 0444 listings.nw
+fi
+rm -f Makefile
+nofake-exec.sh --error -R'generate Makefile' Makefile.nw listings.nw \
+    -- ${SH} >'<<Makefile prefix>>'
+chmod 0444 Makefile
+@
+
+<<function list_set_sources>>=
+list_set_sources(){
+    cat<<'EOF' | normalize-args-as-sets.pl
+<<sources>>
+EOF
+}
+@
+
+<<function indent_args>>=
+indent_args(){
+    perl -le'
+        sub backslash(){ @ARGV ? q{ \\} : q{} }
+        while (my @a = splice(@ARGV, 0, 5)) {
+            print(q{    }, join(q{ }, @a), backslash);
+        }' -- "$@"
+}
+@
+
+<<output TARGETS=>>=
+set --; <<set targets>>
+printf -- 'TARGETS = listings.nw \\\n'
+indent_args "$@"
+printf -- '\n'
+@
+
+<<output SOURCES=>>=
+set --; <<set sources>>
+printf -- 'SOURCES = \\\n'
+indent_args "$@"
+printf -- '\n'
+@
+
+<<output all:>>=
+printf -- '.PHONY: all\nall: $(TARGETS)\n\n'
+cat<<'EOF'
+listings.nw: $(SOURCES)
+	rm -f listings.nw
+	nofake-exec.sh --error -R'generate listings.nw' $^ -- $(SH) >listings.nw
+	chmod 0444 listings.nw
+
+EOF
+@
+
+<<generate build.sh>>=
+#!/bin/sh
+set -eu
+CHMOD='chmod 0555' nofake.sh --error -Rbuild.sh -obuild.sh '<<Makefile prefix>>.nw'
+@
+
+<<build.sh>>=
+#!/bin/sh
+# automatically generated from <<Makefile prefix>>.nw
+set -eu
+SH=${SH:-sh -eu}; export SH
+nofake-exec.sh --error '<<Makefile prefix>>.nw' -- ${SH}
+make -f '<<Makefile prefix>>'
+@
+
+<<generate Makefile>>=
+<<function indent_args>>
+printf -- '\n# automatically generated from <<Makefile prefix>>.nw\n\n'
+printf -- 'SH = %s\n\n' "${SH}"
+set --
+<<set targets>>
+<<set phony targets>>
+<<output SOURCES=>>
+<<output TARGETS=>>
+<<output all:>>
+<<output rules>>
+printf -- '.PHONY: touch\ntouch:\n\t-touch -c $(TARGETS)\n\n'
+printf -- '.PHONY: clean\nclean:\n\t-rm -f $(TARGETS)\n'
+@
+
+<<generate listings.nw - deps>>=
+my $listref = [];
+<<push sources>>
+my @sources = @$listref;
+$listref = [];
+<<push targets>>
+<<push phony targets>>
+my @targets = @$listref;
+my @args = (qw{extract-and-normalize.pl --error},
+    (map {qq{-R${_} deps}} @targets),
+    @sources);
+exec {$args[0]} @args;
+@
+
+nofake reads the entire input before output'ing any content, thus it is
+safe to append to it's input
+
+<<phony targets>>=
+
+<<generate listings.nw>>=
+#!/bin/sh
+set -eu
+PERL=${PERL:-perl -wl}; export PERL
+cat@<<'EOF' | normalize-args-as-nw.pl >.tmp.listings.nw
+#name sources
+<<sources>>
+#name targets
+<<targets>>
+#name phony targets
+<<phony targets>>
+EOF
+nofake-exec.sh --error -R'generate listings.nw - deps' '<<Makefile prefix>>.nw' \
+    .tmp.listings.nw -- ${PERL} >>.tmp.listings.nw
+printf -- 'automatically generated from <<Makefile prefix>>.nw and sources below\n\n'
+cat .tmp.listings.nw
+echo @
+rm -f .tmp.listings.nw
+@
+
+setup %deps before output loop
+
+<<output rules>>=
+(   echo '@<<setup %deps>>='
+    echo 'my %deps = ();'
+    set --;
+    <<set targets>>
+    <<set phony targets>>
+    for target; do
+        echo '$deps{q{'"${target}"'}} = $listref = [];'
+        echo '@<<push '"${target}"' deps>>'
+    done
+) | <<nofake exec 'output rules - use %deps'>>
+@
+
+<<nofake exec 'output rules - use %deps'>>=
+nofake-exec.sh --error -R'setup %deps' -R'output rules - use %deps' \
+    '<<Makefile prefix>>.nw' listings.nw - -- ${PERL}
+@
+
+rule - recipe
+
+<<output rules - use %deps - core - preamble>>=
+print qq{${target}: listings.nw \\};
+my @tmp = @{$deps{$target}};
+while (my @a = splice(@tmp, 0, 5)) {
+    print(q{    }, join(q{ }, @a), @tmp ? q{ \\} : q{});
+}
+@
+
+normal target rule
+
+<<output rules - use %deps - core>>=
+<<output rules - use %deps - core - preamble>>
+print qq{\t\@SH=\047\$(SH)\047 nofake-exec.sh --error } .
+    qq{-R\047run recipe\047 --aa-- \047${target}\047 } .
+    qq{Makefile.nw listings.nw -- \$(SH)\n};
+@
+
+phony target rule
+
+<<output rules - use %deps - core (.PHONY)>>=
+<<output rules - use %deps - core - preamble>>
+print qq{\t\@SH=\047\$(SH)\047 nofake-exec.sh --error } .
+    qq{-R\047run recipe (.PHONY)\047 --aa-- \047${target}\047 } .
+    qq{Makefile.nw listings.nw -- \$(SH)\n};
+@
+
+<<output rules - use %deps>>=
+my $listref = [];
+<<push targets>>
+for my $target (@$listref) {
+    <<output rules - use %deps - core>>
+}
+$listref = [];
+<<push phony targets>>
+for my $target (@$listref) {
+    print qq{.PHONY: ${target}};
+    <<output rules - use %deps - core (.PHONY)>>
+}
+@
+
+<<run recipe - preamble>>=
+#!/bin/sh
+set -eu
+SH=${SH:-sh -eu}; export SH
+target=$1
+set --
+eval "`nofake --error -R"set ${target} deps" listings.nw`"
+args=
+argsdesc=
+for dep; do
+    [ x"${dep%.nw}" = x"${dep}" ] && continue
+    args="${args:+${args} }'${dep}'"
+    argsdesc="${argsdesc:+${argsdesc}, }${dep}"
+done
+@
+
+<<run recipe>>=
+<<run recipe - preamble>>
+printf -- "Buiding %s from %s\n" "${target}" "${argsdesc}."
+eval "set -- ${args}"
+exec nofake-exec.sh --error -R"build ${target}" listings.nw \
+    "$@" --ba-- "$@" --ea-- -- ${SH}
+@
+
+<<run recipe (.PHONY)>>=
+<<run recipe - preamble>>
+printf -- "Running %s from %s\n" "${target}" "${argsdesc}."
+eval "set -- ${args}"
+exec nofake-exec.sh --error -R"run ${target}" listings.nw \
+    "$@" --ba-- "$@" --ea-- -- ${SH}
+@

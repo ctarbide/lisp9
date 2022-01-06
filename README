@@ -6,11 +6,10 @@
 	The canonical source for this version is at
 	https://github.com/ctarbide/lisp9.
 
-	This version depends on cproto, from
-	https://invisible-island.net/cproto/cproto.html.
-
 	Nils M Holm has many books (and code) on LISP and
 	other advanced topics on https://www.t3x.org/.
+
+	Read ls9.nw for building settings and instructions.
 
 	The original README follows:
 

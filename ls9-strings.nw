@@ -54,64 +54,64 @@ int scomp_ci(full x, full y) {
 }
 
 full sless(full x, full y) {
-	if (!string(x)) expect("s<", "string", x);
-	if (!string(y)) expect("s<", "string", y);
+	if (!stringp(x)) expect("s<", "string", x);
+	if (!stringp(y)) expect("s<", "string", y);
 	return scomp(x, y) < 0? TRUE: NIL;
 }
 
 full slteq(full x, full y) {
-	if (!string(x)) expect("s<=", "string", x);
-	if (!string(y)) expect("s<=", "string", y);
+	if (!stringp(x)) expect("s<=", "string", x);
+	if (!stringp(y)) expect("s<=", "string", y);
 	return scomp(x, y) <= 0? TRUE: NIL;
 }
 
 full sequal(full x, full y) {
-	if (!string(x)) expect("s=", "string", x);
-	if (!string(y)) expect("s=", "string", y);
+	if (!stringp(x)) expect("s=", "string", x);
+	if (!stringp(y)) expect("s=", "string", y);
 	if (stringlen(x) != stringlen(y)) return NIL;
 	return scomp(x, y) == 0? TRUE: NIL;
 }
 
 full sgrtr(full x, full y) {
-	if (!string(x)) expect("s>", "string", x);
-	if (!string(y)) expect("s>", "string", y);
+	if (!stringp(x)) expect("s>", "string", x);
+	if (!stringp(y)) expect("s>", "string", y);
 	return scomp(x, y) > 0? TRUE: NIL;
 }
 
 full sgteq(full x, full y) {
-	if (!string(x)) expect("s>=", "string", x);
-	if (!string(y)) expect("s>=", "string", y);
+	if (!stringp(x)) expect("s>=", "string", x);
+	if (!stringp(y)) expect("s>=", "string", y);
 	return scomp(x, y) >= 0? TRUE: NIL;
 }
 
 full siless(full x, full y) {
-	if (!string(x)) expect("si<", "string", x);
-	if (!string(y)) expect("si<", "string", y);
+	if (!stringp(x)) expect("si<", "string", x);
+	if (!stringp(y)) expect("si<", "string", y);
 	return scomp_ci(x, y) < 0? TRUE: NIL;
 }
 
 full silteq(full x, full y) {
-	if (!string(x)) expect("si<=", "string", x);
-	if (!string(y)) expect("si<=", "string", y);
+	if (!stringp(x)) expect("si<=", "string", x);
+	if (!stringp(y)) expect("si<=", "string", y);
 	return scomp_ci(x, y) <= 0? TRUE: NIL;
 }
 
 full siequal(full x, full y) {
-	if (!string(x)) expect("si=", "string", x);
-	if (!string(y)) expect("si=", "string", y);
+	if (!stringp(x)) expect("si=", "string", x);
+	if (!stringp(y)) expect("si=", "string", y);
 	if (stringlen(x) != stringlen(y)) return NIL;
 	return scomp_ci(x, y) == 0? TRUE: NIL;
 }
 
 full sigrtr(full x, full y) {
-	if (!string(x)) expect("si>", "string", x);
-	if (!string(y)) expect("si>", "string", y);
+	if (!stringp(x)) expect("si>", "string", x);
+	if (!stringp(y)) expect("si>", "string", y);
 	return scomp_ci(x, y) > 0? TRUE: NIL;
 }
 
 full sigteq(full x, full y) {
-	if (!string(x)) expect("si>=", "string", x);
-	if (!string(y)) expect("si>=", "string", y);
+	if (!stringp(x)) expect("si>=", "string", x);
+	if (!stringp(y)) expect("si>=", "string", y);
 	return scomp_ci(x, y) >= 0? TRUE: NIL;
 }
 

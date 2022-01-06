@@ -37,7 +37,6 @@
  * Basic constructors 
  */
 
-
 /*
  * Accessors
  */
@@ -100,4 +99,65 @@
 
 #define constp(n) \
 	(!specialp(n) && (tag(n) & CONST_TAG))
+@
+
+<<noexpand>>=
+#noexpand tag
+
+#noexpand car
+#noexpand cdr
+#noexpand caar
+#noexpand cadr
+#noexpand cdar
+#noexpand cddr
+#noexpand caaar
+#noexpand caadr
+#noexpand cadar
+#noexpand caddr
+#noexpand cdaar
+#noexpand cdadr
+#noexpand cddar
+#noexpand cdddr
+#noexpand caaaar
+#noexpand caaadr
+#noexpand caadar
+#noexpand caaddr
+#noexpand cadaar
+#noexpand cadadr
+#noexpand caddar
+#noexpand cadddr
+#noexpand cdaaar
+#noexpand cdaadr
+#noexpand cdadar
+#noexpand cdaddr
+#noexpand cddaar
+#noexpand cddadr
+#noexpand cdddar
+#noexpand cddddr
+
+#noexpand portno
+#noexpand string
+#noexpand stringlen
+#noexpand symname
+#noexpand symlen
+#noexpand vector
+#noexpand veclink
+#noexpand vecndx
+#noexpand vecsize
+#noexpand veclen
+
+#noexpand charp
+#noexpand closurep
+#noexpand ctagp
+#noexpand eofp
+#noexpand fixp
+#noexpand inportp
+#noexpand outportp
+#noexpand stringp
+#noexpand symbolp
+#noexpand vectorp
+#noexpand atomp
+#noexpand pairp
+#noexpand listp
+#noexpand constp
 @

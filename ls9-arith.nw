@@ -3,6 +3,10 @@
 #define mkifix(v) mkfix((full)(v))
 @
 
+<<noexpand>>=
+#noexpand mkifix
+@
+
 <<ls9 init>>=
 P_plus = symref("+");
 P_minus = symref("-");

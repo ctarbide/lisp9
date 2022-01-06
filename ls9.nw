@@ -1,5 +1,20 @@
 
-This is a noweb file, see tools/nofake-README.txt for more information.
+This is a literate programming based source code, see [1] for more
+details.
+
+To build this project coolscripts needs to be installed, it is simple
+to install and has no dependencies, see [2] for details.
+
+With coolscripts installed and on PATH, running ./build.sh should build
+everything.
+
+- [1]: https://github.com/ctarbide/coolscripts/blob/master/bin/nofake-README.txt
+
+- [2]: https://github.com/ctarbide/coolscripts/blob/master/README.txt
+
+<<VERSION>>=
+20220131
+@
 
 <<ls9 header>>=
 /*
@@ -15,8 +30,10 @@ This is a noweb file, see tools/nofake-README.txt for more information.
 #define VERSION "<<VERSION>>"
 @
 
-<<VERSION>>=
-20220131
+preserve VERSION in rtt output
+
+<<noexpand>>=
+#noexpand VERSION
 @
 
 <<IMAGENAME>>=
@@ -44,50 +61,53 @@ ls9
 #define PRDEPTH		1024
 @
 
-<<ls9.c>>=
-<<ls9 header>>
+<<noexpand>>=
+#noexpand IMAGEFILE
+#noexpand IMAGESRC
+#noexpand NNODES
+#noexpand NVCELLS
+#noexpand NPORTS
+#noexpand TOKLEN
+#noexpand CHUNKSIZE
+#noexpand MXMAX
+#noexpand NTRACE
+#noexpand PRDEPTH
+@
+
+<<rtt preamble>>=
+#ifndef __RTT__
+#error "Not using rtt?"
+#endif
+<<c std>>
+<<passthru>>
+<<ignored macros>>
+<<typedef IGNORE>>
+@
+
+this header is used by both rtt and the final c file
+
+<<ls9 header>>=
+<<ls9 includes>>
+<<size_t_aux.h>>
+<<ls9 full>>
 <<ls9 definitions>>
 <<ls9 macros>>
-<<ls9 prototypes>>
+@
+
+<<rtt - ls9>>=
+<<rtt preamble>>
+<<ls9 header>>
+<<noexpand>>
+#output __RTT_OUTPUT
+<<ls9 enums>>
+<<ls9 structs>>
 <<ls9 globals>>
+<<ls9 globals - GC_roots>>
+<<ls9 globals - Imagevars>>
 <<ls9 impl>>
 @
 
-<<ls9-trace.c>>=
-<<ls9 header>>
-<<ls9 definitions>>
-<<ls9 macros>>
-<<ls9 prototypes>>
-<<ls9 trace>>
-@
-
-<<ls9 header: ctypes>>=
-#include <ctype.h>
-@
-
-In case there is a need to use the explict prototypes instead of
-macros.
-
-<<ls9 header: ctypes 0>>=
-int isalnum(int);
-int isalpha(int);
-int isblank(int);
-int iscntrl(int);
-int isdigit(int);
-int isgraph(int);
-int islower(int);
-int isprint(int);
-int ispunct(int);
-int isspace(int);
-int isupper(int);
-int isxdigit(int);
-int tolower(int);
-int toupper(int);
-int isascii(int);
-int toascii(int);
-@
-
-<<ls9 header>>=
+<<ls9 includes>>=
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -96,20 +116,10 @@ int toascii(int);
 #include <setjmp.h>
 #include <unistd.h>
 #include <inttypes.h>
-
-<<ls9 header: ctypes>>
-
-<<size_t_aux.h>>
-
-<<ls9 full and half>>
+#include <ctype.h>
 @
 
-Full word bits and half word bits.
-
-<<ls9 full and half>>=
-<<ls9 full is size_t>>
-/* TODO: half */
-@
+full word bits
 
 <<ls9 full is size_t>>=
 #define full	size_t
@@ -122,7 +132,8 @@ Full word bits and half word bits.
 #define PRIdFULL __PRIdSIZE
 #define PRIiFULL __PRIiSIZE
 
-#define FULL_BITS	SIZE_BITS
+/* #define FULL_BITS	SIZE_BITS */
+#define FULL_BITS	__EXPAND__SIZE_BITS
 #define FULL_BYTES	SIZE_BYTES
 
 #define FULL_MAX	SIZE_MAX
@@ -143,8 +154,216 @@ TODO
 TODO
 @
 
-<<ls9 prototypes>>=
-#ifndef INSIDE_CPROTO
-#include "ls9_protos.h"
+<<ls9 full>>=
+<<ls9 full is size_t>>
+@
+
+__EXPAND__FULL_BITS is a macro backup, required for rtt
+preprocessor logic
+
+<<noexpand>>=
+#noexpand FULL_BITS __EXPAND__FULL_BITS
+@
+
+<<noexpand>>=
+#noexpand FULL_BYTES
+#noexpand FULL_MAX
+#noexpand IFULL_MIN
+#noexpand IFULL_MAX
+@
+
+<<targets>>=
+ls9.c ls9
+@
+
+<<ls9.c deps>>=
+ls9-arith.nw ls9-cli.nw ls9-clsconv.nw ls9-compiler.nw ls9-error.nw
+ls9-gc.nw ls9-globalenv.nw ls9-ht.nw ls9-img.nw ls9-io.nw ls9-list.nw
+ls9-litpool.nw ls9-macroexpand.nw ls9-macros.nw ls9-misc.nw
+ls9-printer.nw ls9-reader.nw ls9-repl.nw ls9-scripts.nw ls9-startup.nw
+ls9-strings.nw ls9-syncheck.nw ls9-types.nw ls9-vm.nw ls9.nw
+size_t_aux.nw
+@
+
+<<ls9 deps>>=
+ls9.c ls9.nw
+@
+
+<<c std>>=
+#ifndef __USE_ISOC99
+#define __USE_ISOC99 1
 #endif
+
+#ifndef __STRICT_ANSI__
+#define __STRICT_ANSI__ 1
+#endif
+
+#define __STDC__ 1
+#define __STDC_VERSION__ 199901L
+
+#ifndef _BSD_SOURCE
+#define _BSD_SOURCE
+#endif
+#ifndef _ISOC99_SOURCE
+#define _ISOC99_SOURCE
+#endif
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE           600
+#endif
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE         200112L
+#endif
+@
+
+<<passthru>>=
+#define __PT__va_arg(_1, _2) passthru(va_arg(_1, passthru(_2)))
+
+#define __PT__fpclassify(x) passthru(fpclassify(passthru(x)))
+#define __PT__isinf(x)      passthru(     isinf(passthru(x)))
+#define __PT__isnan(x)      passthru(     isnan(passthru(x)))
+#define __PT__isnormal(x)   passthru(  isnormal(passthru(x)))
+#define __PT__isfinite(x)   passthru(  isfinite(passthru(x)))
+
+#undef va_arg
+#define va_arg(_1, _2) __PT__va_arg(_1, _2)
+@
+
+ignored macros in rtt
+
+<<ignored macros>>=
+#define __attribute__(x)
+#define restrict
+#define inline
+#define _Noreturn
+@
+
+ignored typedefs in rtt
+
+<<typedef IGNORE>>=
+typedef IGNORE __builtin_va_list;
+typedef IGNORE va_list;
+typedef IGNORE _Bool;
+@
+
+<<noexpand system>>=
+#ifdef INFINITY
+#noexpand INFINITY
+#endif
+#ifdef isalpha
+#noexpand isalpha
+#endif
+#ifdef UINT64_MAX
+#noexpand UINT64_MAX
+#endif
+#noexpand UINT32_MAX
+@
+
+<<noexpand>>=
+<<noexpand system>>
+@
+
+<<noexpand>>=
+#noexpand SIZE_MAX
+#noexpand SIZE_BITS __EXPAND__SIZE_BITS
+#noexpand SIZE_BYTES
+#noexpand SSIZE_T
+#noexpand SSIZE_MIN
+#noexpand SSIZE_MAX
+@
+
+<<rtt functions>>=
+rtt_gdb(){ gdb --quiet --args rtt "$@"; }
+rtt__pure_c__stdout(){
+    set -- -D__RTT__=1 -D__RTT_PURE_C__=1 "$@"
+    set -- -D__RTT_OUTPUT='"/dev/stdout"' "$@"
+    rtt -x "$@"
+}
+# nofake-rtt-nofake generator cycle
+nrn(){
+    nofake --error -R'rtt - ls9' "$@" |
+        rtt__pure_c__stdout - |
+        nofake --error -R'ls9.c' "$@" -
+}
+@
+
+<<ls9.c>>=
+<<ls9 header>>
+<<untagged enums>>
+<<struct imghdr>>
+<<globals>>
+<<protos>>
+<<impl>>
+@
+
+<<build ls9.c>>=
+<<rtt functions>>
+rm -f ls9.c
+nrn "$@" >ls9.c
+chmod 0444 ls9.c
+@
+
+<<build ls9>>=
+#gcc -O2 -Wall -ansi -pedantic ls9.c -ols9
+gcc -O2 -Wall -ansi -pedantic -Werror -fmax-errors=3 ls9.c -ols9
+@
+
+<<dump-image.sh>>=
+#!/bin/sh
+set -eu
+rm -f '<<IMAGEFILE>>'
+echo '(dump-image "<<IMAGEFILE>>")' | ./ls9 -q
+@
+
+<<targets>>=
+dump-image.sh
+ls9.image
+@
+
+<<dump-image.sh deps>>=
+ls9.nw ls9
+@
+
+<<build dump-image.sh>>=
+CHMOD='chmod 0555' nofake.sh --error -Rdump-image.sh -odump-image.sh "$@"
+@
+
+<<ls9.image deps>>=
+ls9.nw dump-image.sh
+@
+
+<<build ls9.image>>=
+<<dump-image.sh>>
+@
+
+<<targets>>=
+lisp9.tr
+lisp9.ps
+@
+
+<<lisp9.tr deps>>=
+ls9.nw ls9 lisp9.txt
+@
+
+<<lisp9.ps deps>>=
+ls9.nw lisp9.tr
+@
+
+<<build lisp9.tr>>=
+./ls9 src/print.ls9 -T -C -p 60 -l 6 -m -4 -t "LISP9 REFERENCE MANUAL" lisp9.txt >lisp9.tr
+@
+
+<<build lisp9.ps>>=
+groff -Tps -P-p11i,8.5i lisp9.tr >lisp9.ps
+@
+
+<<phony targets>>=
+test
+@
+
+<<test deps>>=
+ls9.nw ls9
+@
+
+<<run test>>=
+./ls9 test.ls9
 @
