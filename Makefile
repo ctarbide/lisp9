@@ -3,16 +3,16 @@ NOFAKE = tools/nofake
 
 CC = gcc
 
-WIDTH = -m32
-# WIDTH = -m64
+# WIDTH = -m32
+WIDTH = -m64
 
 OPTFLAGS = -O2
 # OPTFLAGS = -O3
 # OPTFLAGS = -O0
 
-WERROR = -pedantic -Werror -fmax-errors=5
+WERROR = -Werror -fmax-errors=5
 
-CFLAGS = $(WIDTH) -ggdb3 $(OPTFLAGS) -std=c99 \
+CFLAGS = $(WIDTH) -ggdb3 $(OPTFLAGS) -std=c99 -pedantic \
     -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes \
     -Wshadow -Wconversion -Wdeclaration-after-statement \
     -Wno-unused-parameter \

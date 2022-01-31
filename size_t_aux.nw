@@ -41,6 +41,22 @@ Minimal includes and compilers handling.
 #endif
 @
 
+Portable static assert.
+
+<<size_t_aux.h>>=
+#ifndef PASTE2
+#define PASTE2(x,y)	x ## y
+#endif
+#ifndef EXPAND_THEN_PASTE
+#define EXPAND_THEN_PASTE(a, b) PASTE2(a,b)
+#endif
+#ifndef C89_STATIC_ASSERT
+#define C89_STATIC_ASSERT(x, msg) typedef char \
+	EXPAND_THEN_PASTE(STATIC_ASSERT_FAIL_AT_LINE_,__LINE__) \
+	[x ? (int)sizeof(msg) : -1]
+#endif
+@
+
 Nice tip learnt from [how-to-get-size-max-in-c89].
 
 <<size_t_aux.h>>=
@@ -67,8 +83,15 @@ UINT_MAX?
 
 <<size_t_aux.h>>=
 #if SIZE_MAX == UINT_MAX
-#define SSIZE_MIN	INT_MIN
-#define SSIZE_MAX	INT_MAX
+#ifndef SSIZE_T
+#define SSIZE_T int
+#endif
+#ifndef SSIZE_MIN
+#define SSIZE_MIN	((int)INT_MIN)
+#endif
+#ifndef SSIZE_MAX
+#define SSIZE_MAX	((int)INT_MAX)
+#endif
 #define PRIz "i"
 #if (INT_MAX>>16) == SHRT_MAX
 #define halfsize_t	unsigned short
@@ -82,8 +105,15 @@ ULONG_MAX?
 
 <<size_t_aux.h>>=
 #elif SIZE_MAX == ULONG_MAX
-#define SSIZE_MIN	LONG_MIN
-#define SSIZE_MAX	LONG_MAX
+#ifndef SSIZE_T
+#define SSIZE_T long
+#endif
+#ifndef SSIZE_MIN
+#define SSIZE_MIN	((long)LONG_MIN)
+#endif
+#ifndef SSIZE_MAX
+#define SSIZE_MAX	((long)LONG_MAX)
+#endif
 #define PRIz "li"
 #if (LONG_MAX>>32) == INT_MAX
 #define halfsize_t	unsigned int
@@ -97,8 +127,15 @@ ULLONG_MAX?
 
 <<size_t_aux.h>>=
 #elif SIZE_MAX == ULLONG_MAX
-#define SSIZE_MIN	LLONG_MIN
-#define SSIZE_MAX	LLONG_MAX
+#ifndef SSIZE_T
+#define SSIZE_T long long
+#endif
+#ifndef SSIZE_MIN
+#define SSIZE_MIN	((long long)LLONG_MIN)
+#endif
+#ifndef SSIZE_MAX
+#define SSIZE_MAX	((long long)LLONG_MAX)
+#endif
 #define PRIz "lli"
 #if (LLONG_MAX>>32) == INT_MAX
 #define halfsize_t	unsigned int
@@ -112,32 +149,21 @@ USHRT_MAX?
 
 <<size_t_aux.h>>=
 #elif SIZE_MAX == USHRT_MAX
-#define SSIZE_MIN	SHRT_MIN
-#define SSIZE_MAX	SHRT_MAX
+#ifndef SSIZE_T
+#define SSIZE_T short
+#endif
+#ifndef SSIZE_MIN
+#define SSIZE_MIN	((short)SHRT_MIN)
+#endif
+#ifndef SSIZE_MAX
+#define SSIZE_MAX	((short)SHRT_MAX)
+#endif
 #define PRIz "i"
 #if (USHRT_MAX>>8) == UCHAR_MAX
 #define halfsize_t	unsigned char
 #define halfssize_t	signed char
 #else
 #error platform has exotic USHRT_MAX
-#endif
-@
-
-UINTMAX_MAX?
-
-<<size_t_aux.h>>=
-#elif SIZE_MAX == UINTMAX_MAX
-#define SSIZE_MIN	INTMAX_MIN
-#define SSIZE_MAX	INTMAX_MAX
-#define PRIz PRIiMAX
-#if (INTMAX_MAX>>32) == INT_MAX
-#define halfsize_t	unsigned int
-#define halfssize_t	int
-#elif (INTMAX_MAX>>16) == SHRT_MAX
-#define halfsize_t	unsigned short
-#define halfssize_t	short
-#else
-#error platform has exotic INTMAX_MAX
 #endif
 @
 
@@ -162,6 +188,14 @@ cannot be used in preprocessor.
 #endif
 @
 
+Some more checks.
+
+<<size_t_aux.h>>=
+C89_STATIC_ASSERT(((SSIZE_T)-1) < 0, "SSIZE_T is signed");
+C89_STATIC_ASSERT(sizeof(SSIZE_T) >= sizeof(long), "SSIZE_T can hold a long");
+C89_STATIC_ASSERT(sizeof(SSIZE_T) == sizeof(size_t), "SSIZE_T can hold a size_t and vice-versa");
+@
+
 A simple test program to validate.
 
 <<test.c>>=
@@ -180,13 +214,14 @@ main(int argc, char **argv)
 	printf("USHRT_MAX:\t\t%u\n", USHRT_MAX);
 	printf(" INT_MAX:\t\t%i\n",  INT_MAX);
 	printf("UINT_MAX:\t\t%u\n", UINT_MAX);
-	printf(" SIZE_MAX:\t\t%"__PRIuSIZE" (u)\n",  SIZE_MAX);
-	printf(" SIZE_MAX:\t\t%"__PRIxSIZE" (x)\n",  SIZE_MAX);
-	printf(" SIZE_MAX:\t\t%"__PRIXSIZE" (X)\n",  SIZE_MAX);
-	printf("SSIZE_MAX:\t\t%"__PRIdSIZE" (d)\n", SSIZE_MAX);
-	printf("SSIZE_MIN:\t\t%"__PRIdSIZE" (d)\n", SSIZE_MIN);
-	printf("SSIZE_MAX:\t\t%"__PRIiSIZE" (i)\n", SSIZE_MAX);
-	printf("SSIZE_MIN:\t\t%"__PRIiSIZE" (i)\n", SSIZE_MIN);
+	printf(" SIZE_MAX:\t\t%"__PRIuSIZE" (u)\n", (size_t)SIZE_MAX);
+	printf(" SIZE_MAX:\t\t%"__PRIxSIZE" (x)\n", (size_t)SIZE_MAX);
+	printf(" SIZE_MAX:\t\t%"__PRIXSIZE" (X)\n", (size_t)SIZE_MAX);
+	printf("SSIZE_MAX:\t\t%"__PRIdSIZE" (d)\n", (SSIZE_T)SSIZE_MAX);
+	printf("SSIZE_MIN:\t\t%"__PRIdSIZE" (d)\n", (SSIZE_T)SSIZE_MIN);
+	printf("SSIZE_MAX:\t\t%"__PRIiSIZE" (i)\n", (SSIZE_T)SSIZE_MAX);
+	printf("SSIZE_MIN:\t\t%"__PRIiSIZE" (i)\n", (SSIZE_T)SSIZE_MIN);
+
 	printf(" SIZE_BITS:\t\t%u\n",  SIZE_BITS);
 	printf(" SIZE_BYTES:\t\t%u\n", SIZE_BYTES);
 #if SIZE_BYTES == 4
@@ -196,6 +231,7 @@ main(int argc, char **argv)
 #else
 	printf("Using unusual %u bytes for size_t.\n", SIZE_BYTES);
 #endif
+
 	return 0;
 }
 @

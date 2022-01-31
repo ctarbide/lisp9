@@ -74,22 +74,22 @@ full argvec(char **argv) {
 }
 
 int main(int argc, char **argv) {
-	volatile int	i0, doload;
-	int	i, j, k, usrimg;
+	volatile int	i, doload;
+	int	j, k, usrimg;
 	char	*s;
 	char	*imgfile;
 
-	imgfile = IMAGEFILE;
-	usrimg = 0;
-	doload = 1;
 	if (setjmp(Restart)) {
 		exit(EXIT_FAILURE);
 	}
+
+	imgfile = IMAGEFILE;
+	usrimg = 0;
 	init();
-	i0 = 1;
+	i = 1;
 	if (argc > 2 && strcmp(argv[1], "-i") == 0) {
 		imgfile = argv[2];
-		i0 = 3;
+		i = 3;
 		usrimg = 1;
 	}
 	if (existsp(imgfile) != NIL) {
@@ -110,7 +110,8 @@ int main(int argc, char **argv) {
 	if (setjmp(Restart) != 0) {
 		exit(EXIT_FAILURE);
 	}
-	for (i=i0; i<argc; i++) {
+	doload = 1;
+	for (; i<argc; i++) {
 		if (argv[i][0] != '-') break;
 		if ('-' == argv[i][1]) {
 			doload = 0;
