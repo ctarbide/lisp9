@@ -16,7 +16,7 @@ This is a noweb file, see tools/nofake-README.txt for more information.
 @
 
 <<VERSION>>=
-20220101
+20220131
 @
 
 <<IMAGENAME>>=
@@ -61,16 +61,43 @@ ls9
 <<ls9 trace>>
 @
 
+<<ls9 header: ctypes>>=
+#include <ctype.h>
+@
+
+In case there is a need to use the explict prototypes instead of
+macros.
+
+<<ls9 header: ctypes 0>>=
+int isalnum(int);
+int isalpha(int);
+int isblank(int);
+int iscntrl(int);
+int isdigit(int);
+int isgraph(int);
+int islower(int);
+int isprint(int);
+int ispunct(int);
+int isspace(int);
+int isupper(int);
+int isxdigit(int);
+int tolower(int);
+int toupper(int);
+int isascii(int);
+int toascii(int);
+@
+
 <<ls9 header>>=
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
 #include <limits.h>
 #include <signal.h>
 #include <setjmp.h>
 #include <unistd.h>
 #include <inttypes.h>
+
+<<ls9 header: ctypes>>
 
 <<size_t_aux.h>>
 

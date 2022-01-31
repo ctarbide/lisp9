@@ -271,14 +271,14 @@ full rdfix(full c) {
 	full	r;
 
 	r = 0;
-	while (isdigit(c)) {
+	while (isdigit((int)c)) {
 		r = r*10 + c - '0';
-		/* CAST */
+		/* unsigned char cast to an int, then to full */
 		c = (full)readc();
 	}
 	if (c != 'r') rderror("'R' expected after #radix", UNDEF);
 	if (r < 2 || r > 36) rderror("bad radix in #radixR", mkfix(r));
-	/* CAST */
+	/* unsigned char cast to an int, then to full */
 	c = (full)readc();
 	return rdsymfix(c, r, 0);
 }

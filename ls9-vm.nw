@@ -422,7 +422,7 @@ void run(full x) {
 		break;
 	case OP_ALPHAC:
 		if (!charp(Acc)) expect("alphac", "char", Acc);
-		Acc = isalpha(charval(Acc))? TRUE: NIL;
+		Acc = isalpha((int)charval(Acc))? TRUE: NIL;
 		skip(ISIZE0);
 		break;
 	case OP_ATOM:
@@ -563,7 +563,7 @@ void run(full x) {
 		break;
 	case OP_LOWERC:
 		if (!charp(Acc)) expect("lowerc", "char", Acc);
-		Acc = islower(charval(Acc))? TRUE: NIL;
+		Acc = islower((int)charval(Acc))? TRUE: NIL;
 		skip(ISIZE0);
 		break;
 	case OP_MX:
@@ -595,7 +595,7 @@ void run(full x) {
 		break;
 	case OP_NUMERIC:
 		if (!charp(Acc)) expect("numeric", "char", Acc);
-		Acc = isdigit(charval(Acc))? TRUE: NIL;
+		Acc = isdigit((int)charval(Acc))? TRUE: NIL;
 		skip(ISIZE0);
 		break;
 	case OP_OPEN_INFILE:
@@ -707,7 +707,7 @@ void run(full x) {
 		break;
 	case OP_UPPERC:
 		if (!charp(Acc)) expect("upperc", "char", Acc);
-		Acc = isupper(charval(Acc))? TRUE: NIL;
+		Acc = isupper((int)charval(Acc))? TRUE: NIL;
 		skip(ISIZE0);
 		break;
 	case OP_VCONC:
