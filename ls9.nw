@@ -1,16 +1,18 @@
 
-This is a literate programming based source code, see [1] for more
+This is a literate-programming-based source code; see [1] for more
 details.
 
-To build this project coolscripts needs to be installed, it is simple
-to install and has no dependencies, see [2] for details.
+To build this project, coolscripts [2] and icon-rtt [3] need to be
+installed. icon-rtt is a C language superset.
 
-With coolscripts installed and on PATH, running ./build.sh should build
+With both installed and on the PATH, running ./build.sh should build
 everything.
 
 - [1]: https://github.com/ctarbide/coolscripts/blob/master/bin/nofake-README.txt
 
 - [2]: https://github.com/ctarbide/coolscripts/blob/master/README.txt
+
+- [3]: https://github.com/ctarbide/icon-rtt
 
 <<VERSION>>=
 20220131
