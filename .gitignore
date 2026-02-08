@@ -1,10 +1,13 @@
 *~
 *.o
 *.stamp
+/nrn_n.r
+/nrn_nr.nw
+/nrn_nrn.out
+/ls9.c
 /ls9
 /ls9.image
 /ls9-*.image
 /dump-image.sh
-/ls9.c
 /lisp9.ps
 /lisp9.tr

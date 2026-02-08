@@ -1,7 +1,7 @@
 
 Heap image I/O
 
-<<ls9 structs>>=
+<<ls9 structs or unions>>=
 struct imghdr {
 	char	magic[5];		/* "LISP9"	*/
 	char	version[8];		/* "yyyymmdd"	*/

@@ -35,6 +35,7 @@ everything.
 preserve VERSION in rtt output
 
 <<noexpand>>=
+#noexpand NULL
 #noexpand VERSION
 @
 
@@ -101,8 +102,9 @@ this header is used by both rtt and the final c file
 <<ls9 header>>
 <<noexpand>>
 #output __RTT_OUTPUT
+/*@<<ls9 typedefs>>*/
 <<ls9 enums>>
-<<ls9 structs>>
+<<ls9 structs or unions>>
 <<ls9 globals>>
 <<ls9 globals - GC_roots>>
 <<ls9 globals - Imagevars>>
@@ -282,16 +284,41 @@ rtt__pure_c__stdout(){
 }
 # nofake-rtt-nofake generator cycle
 nrn(){
-    nofake --error -R'rtt - ls9' "$@" |
+    rtt_in=$1; shift
+    tangle_out=$1; shift
+    nofake --error -R"${rtt_in}" "$@" |
         rtt__pure_c__stdout - |
-        nofake --error -R'ls9.c' "$@" -
+        CHMOD='chmod 0444' nofake.sh --error \
+            -R"${tangle_out}" -o"${tangle_out}" "$@" -
 }
+nrn_DEBUG(){
+    rtt_in=$1; shift
+    tangle_out=$1; shift
+    nofake --error -R"${rtt_in}" "$@" >nrn_n.r
+    rtt__pure_c__stdout nrn_n.r >nrn_nr.nw
+    nofake.sh --error -R"${tangle_out}" -onrn_nrn.out "$@" nrn_nr.nw
+    cp -av nrn_nrn.out "${tangle_out}"
+    chmod 0444 "${tangle_out}"
+}
+@
+
+<<typedefs>>=
+
+@
+
+<<enums>>=
+<<untagged enums>>
+@
+
+<<structs or unions>>=
+<<struct imghdr>>
 @
 
 <<ls9.c>>=
 <<ls9 header>>
-<<untagged enums>>
-<<struct imghdr>>
+<<typedefs>>
+<<enums>>
+<<structs or unions>>
 <<globals>>
 <<protos>>
 <<impl>>
@@ -300,8 +327,7 @@ nrn(){
 <<build ls9.c>>=
 <<rtt functions>>
 rm -f ls9.c
-nrn "$@" >ls9.c
-chmod 0444 ls9.c
+nrn 'rtt - ls9' ls9.c "$@" >ls9.c
 @
 
 <<build ls9>>=
