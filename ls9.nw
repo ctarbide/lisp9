@@ -18,6 +18,8 @@ everything.
 20220131
 @
 
+this header is used by both rtt and the final c file
+
 <<ls9 header>>=
 /*
  * LISP9 Interpreter
@@ -30,9 +32,13 @@ everything.
  */
 
 #define VERSION "<<VERSION>>"
-@
 
-preserve VERSION in rtt output
+<<c std>>
+<<ls9 includes>>
+<<size_t_aux.h>>
+<<ls9 definitions>>
+<<ls9 macros>>
+@
 
 <<noexpand>>=
 #noexpand NULL
@@ -81,20 +87,12 @@ ls9
 #ifndef __RTT__
 #error "Not using rtt?"
 #endif
-<<c std>>
+#define __STRICT_ANSI__ 1
+#define __STDC__ 1
+#define __STDC_VERSION__ 199901L
 <<passthru>>
 <<ignored macros>>
 <<typedef IGNORE>>
-@
-
-this header is used by both rtt and the final c file
-
-<<ls9 header>>=
-<<ls9 includes>>
-<<size_t_aux.h>>
-<<ls9 full>>
-<<ls9 definitions>>
-<<ls9 macros>>
 @
 
 <<rtt - ls9>>=
@@ -158,7 +156,7 @@ TODO
 TODO
 @
 
-<<ls9 full>>=
+<<ls9 definitions>>=
 <<ls9 full is size_t>>
 @
 
@@ -194,17 +192,6 @@ ls9.c ls9.nw
 @
 
 <<c std>>=
-#ifndef __USE_ISOC99
-#define __USE_ISOC99 1
-#endif
-
-#ifndef __STRICT_ANSI__
-#define __STRICT_ANSI__ 1
-#endif
-
-#define __STDC__ 1
-#define __STDC_VERSION__ 199901L
-
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
@@ -304,7 +291,7 @@ nrn_DEBUG(){
 
 <<typedefs>>=
 
-@
+<<protos - static>>=
 
 <<enums>>=
 <<untagged enums>>
@@ -319,8 +306,9 @@ nrn_DEBUG(){
 <<typedefs>>
 <<enums>>
 <<structs or unions>>
-<<globals>>
 <<protos>>
+<<protos - static>>
+<<globals>>
 <<impl>>
 @
 
