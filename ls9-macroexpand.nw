@@ -1,12 +1,12 @@
 
 Macro expander
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	Macros = NIL;
 volatile int	Mxlev = 0;
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 void newmacro(full id, full fn) {
 	full	n, name;
 

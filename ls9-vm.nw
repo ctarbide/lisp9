@@ -1,7 +1,7 @@
 
 Abstract machine
 
-<<ls9 enums>>=
+<<ls9.r - enums>>=
 enum {	OP_ILL, OP_APPLIS, OP_APPLIST, OP_APPLY, OP_TAILAPP, OP_QUOTE,
 	OP_ARG, OP_REF, OP_PUSH, OP_PUSHTRUE, OP_PUSHVAL, OP_POP,
 	OP_DROP, OP_JMP, OP_BRF, OP_BRT, OP_HALT, OP_CATCHSTAR,
@@ -33,7 +33,7 @@ enum {	OP_ILL, OP_APPLIS, OP_APPLIST, OP_APPLY, OP_TAILAPP, OP_QUOTE,
 	OP_VSIZE, OP_WHITEC, OP_WRITEC };
 @
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define ins()		(string(cdr(Prog))[Ip])
 
 #define op1()		fetcharg(string(cdr(Prog)), Ip+1)
@@ -88,7 +88,7 @@ enum {	OP_ILL, OP_APPLIS, OP_APPLIST, OP_APPLY, OP_TAILAPP, OP_QUOTE,
 #noexpand whitespc
 @
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 char *op_names[] = {
 	"OP_ILL", "OP_APPLIS", "OP_APPLIST", "OP_APPLY", "OP_TAILAPP", "OP_QUOTE",
 	"OP_ARG", "OP_REF", "OP_PUSH", "OP_PUSHTRUE", "OP_PUSHVAL", "OP_POP",
@@ -255,7 +255,7 @@ P_whitec = symref("whitec");
 P_writec = symref("writec");
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 void run(full x) {
 	byte opcode;
 	Acc = NIL;

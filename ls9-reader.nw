@@ -1,12 +1,12 @@
 
 Reader
 
-<<ls9 definitions>>=
+<<ls9.c - definitions>>=
 #define LP	'('
 #define RP	')'
 @
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define octalp(c) \
 	('0' == (c) || '1' == (c) || '2' == (c) || '3' == (c) || \
 	 '4' == (c) || '5' == (c) || '6' == (c) || '7' == (c))
@@ -22,7 +22,7 @@ Reader
 #noexpand symbolic
 @
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	S_apply, S_def, S_defmac, S_defun, S_errtag,
 	S_errval, S_if, S_ifstar, S_imagefile, S_labels, S_lambda,
 	S_macro, S_prog, S_quiet, S_quote, S_qquote, S_starstar,
@@ -81,7 +81,7 @@ S_setq = symref("setq");
 S_start = symref("start");
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 int octchar(char *s) {
 	int	v = 0;
 

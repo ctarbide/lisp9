@@ -1,10 +1,10 @@
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 volatile int	Intr = 0;
 int	Quiet = 0;
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 void kbdintr(int sig) {
 	Run = 0;
 	Intr = 1;

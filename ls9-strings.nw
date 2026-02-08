@@ -1,7 +1,7 @@
 
 Inline functions, strings
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	P_mkstr;
 full	P_sconc;
 full	P_sequal;
@@ -20,7 +20,7 @@ full	P_sset;
 full	P_substr;
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 int scomp(full x, full y) {
 	full	kx, ky;
 

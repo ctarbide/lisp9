@@ -1,14 +1,14 @@
 
 Compiler, literal pool
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	Obhash = NIL,
 	Obarray = NIL,
 	Obmap = NIL,
 	Obptr = 0;
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full obslot(void) {
 	full	i, j, k, m, n;
 	byte	*s;

@@ -1,12 +1,12 @@
 
 Compiler, code generator
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define emitop(op) emit(op)
 #define cpushval(x) (Cts = cons(mkfix(x), Cts))
 @
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	Nullstr = NIL;
 full	Nullvec = NIL;
 
@@ -21,7 +21,7 @@ full	One = NIL;
 full	Ten = NIL;
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 void emit(full x) {
 	full	n, i, k;
 	byte	*vp, *vn;

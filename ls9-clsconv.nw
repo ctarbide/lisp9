@@ -1,7 +1,7 @@
 
 Compiler, closure conversion
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	I_a, I_e;
 
 full	Env = NIL,
@@ -12,7 +12,7 @@ full	I_closure;
 full	I_arg, I_ref;
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full set_union(full a, full b) {
 	full	n;
 

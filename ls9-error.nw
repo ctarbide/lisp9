@@ -1,7 +1,7 @@
 
 Error reporting and handling
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	Trace[NTRACE];
 full	Tp = 0;
 
@@ -20,7 +20,7 @@ full	Glob;
 full	S_errtag, S_errval;
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 void clrtrace(void) {
 	int	i;
 

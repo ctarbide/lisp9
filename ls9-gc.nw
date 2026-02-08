@@ -1,7 +1,7 @@
 
 Memory management
 
-<<ls9 definitions>>=
+<<ls9.c - definitions>>=
 #define OBFREE		0
 #define OBALLOC		1
 #define OBUSED		2
@@ -29,7 +29,7 @@ Memory management
 #noexpand RAW_VECDATA
 @
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define fetcharg(a, i)	(full)(((a)[i] @<< 8) | (a)[(i)+1])
 
 #define protect(n) (Protected = cons((n), Protected))
@@ -40,13 +40,13 @@ Memory management
 #noexpand protect
 @
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	*Car = NULL,
 	*Cdr = NULL;
 byte	*Tag = NULL;
 @
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	*Vectors = NULL;
 
 full	Freelist = NIL;
@@ -68,7 +68,7 @@ full	Tmp = NIL;
 Globals that makes reference to other globals must be singled out for later
 inclusion.
 
-<<ls9 globals - GC_roots>>=
+<<ls9.r - globals - GC_roots>>=
 full	*GC_roots[] = {
 		&Protected, &Symbols, &Symhash, &Prog, &Env, &Obhash,
 		&Obarray, &Obmap, &Cts, &Emitbuf, &Glob, &Macros, &Rts,
@@ -77,7 +77,7 @@ full	*GC_roots[] = {
 		NULL };
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full unprot(int k) {
 	full	n = NIL; /*LINT*/
 

@@ -20,7 +20,7 @@ everything.
 
 this header is used by both rtt and the final c file
 
-<<ls9 header>>=
+<<ls9.c - header>>=
 /*
  * LISP9 Interpreter
  * Nils M Holm, 2018,2019
@@ -34,13 +34,13 @@ this header is used by both rtt and the final c file
 #define VERSION "<<VERSION>>"
 
 <<c std>>
-<<ls9 includes>>
+<<ls9.c - includes>>
 <<size_t_aux.h>>
-<<ls9 definitions>>
-<<ls9 macros>>
+<<ls9.c - definitions>>
+<<ls9.c - macros>>
 @
 
-<<noexpand>>=
+<<ls9.r - noexpand>>=
 #noexpand NULL
 #noexpand VERSION
 @
@@ -57,7 +57,7 @@ ls9
 <<IMAGENAME>>.ls9
 @
 
-<<ls9 definitions>>=
+<<ls9.c - definitions>>=
 #define IMAGEFILE	"<<IMAGEFILE>>"
 #define IMAGESRC	"<<IMAGESRC>>"
 #define NNODES		262144
@@ -70,7 +70,7 @@ ls9
 #define PRDEPTH		1024
 @
 
-<<noexpand>>=
+<<ls9.r - noexpand>>=
 #noexpand IMAGEFILE
 #noexpand IMAGESRC
 #noexpand NNODES
@@ -83,33 +83,33 @@ ls9
 #noexpand PRDEPTH
 @
 
-<<rtt preamble>>=
+<<rtt - ls9 - preamble>>=
 #ifndef __RTT__
 #error "Not using rtt?"
 #endif
 #define __STRICT_ANSI__ 1
 #define __STDC__ 1
 #define __STDC_VERSION__ 199901L
-<<passthru>>
-<<ignored macros>>
-<<typedef IGNORE>>
+<<ls9.r - passthru>>
+<<ls9.r - ignored macros>>
+<<ls9.r - typedef IGNORE>>
 @
 
 <<rtt - ls9>>=
-<<rtt preamble>>
-<<ls9 header>>
-<<noexpand>>
+<<rtt - ls9 - preamble>>
+<<ls9.c - header>>
+<<ls9.r - noexpand>>
 #output __RTT_OUTPUT
-/*@<<ls9 typedefs>>*/
-<<ls9 enums>>
-<<ls9 structs or unions>>
-<<ls9 globals>>
-<<ls9 globals - GC_roots>>
-<<ls9 globals - Imagevars>>
-<<ls9 impl>>
+/*@<<ls9.r - typedefs>>*/
+<<ls9.r - enums>>
+<<ls9.r - structs or unions>>
+<<ls9.r - globals>>
+<<ls9.r - globals - GC_roots>>
+<<ls9.r - globals - Imagevars>>
+<<ls9.r - impl>>
 @
 
-<<ls9 includes>>=
+<<ls9.c - includes>>=
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -156,18 +156,18 @@ TODO
 TODO
 @
 
-<<ls9 definitions>>=
+<<ls9.c - definitions>>=
 <<ls9 full is size_t>>
 @
 
-__EXPAND__FULL_BITS is a macro backup, required for rtt
-preprocessor logic
+__EXPAND__FULL_BITS is a macro backup, required for rtt preprocessor
+logic directly tied to C implementation, see ls9-img.nw
 
-<<noexpand>>=
+<<ls9.r - noexpand>>=
 #noexpand FULL_BITS __EXPAND__FULL_BITS
 @
 
-<<noexpand>>=
+<<ls9.r - noexpand>>=
 #noexpand FULL_BYTES
 #noexpand FULL_MAX
 #noexpand IFULL_MIN
@@ -206,7 +206,7 @@ ls9.c ls9.nw
 #endif
 @
 
-<<passthru>>=
+<<ls9.r - passthru>>=
 #define __PT__va_arg(_1, _2) passthru(va_arg(_1, passthru(_2)))
 
 #define __PT__fpclassify(x) passthru(fpclassify(passthru(x)))
@@ -221,7 +221,7 @@ ls9.c ls9.nw
 
 ignored macros in rtt
 
-<<ignored macros>>=
+<<ls9.r - ignored macros>>=
 #define __attribute__(x)
 #define restrict
 #define inline
@@ -230,13 +230,13 @@ ignored macros in rtt
 
 ignored typedefs in rtt
 
-<<typedef IGNORE>>=
+<<ls9.r - typedef IGNORE>>=
 typedef IGNORE __builtin_va_list;
 typedef IGNORE va_list;
 typedef IGNORE _Bool;
 @
 
-<<noexpand system>>=
+<<ls9.r - noexpand - system>>=
 #ifdef INFINITY
 #noexpand INFINITY
 #endif
@@ -246,14 +246,16 @@ typedef IGNORE _Bool;
 #ifdef UINT64_MAX
 #noexpand UINT64_MAX
 #endif
+#ifdef UINT32_MAX
 #noexpand UINT32_MAX
+#endif
 @
 
-<<noexpand>>=
-<<noexpand system>>
+<<ls9.r - noexpand>>=
+<<ls9.r - noexpand - system>>
 @
 
-<<noexpand>>=
+<<ls9.r - noexpand>>=
 #noexpand SIZE_MAX
 #noexpand SIZE_BITS __EXPAND__SIZE_BITS
 #noexpand SIZE_BYTES
@@ -284,38 +286,34 @@ nrn_DEBUG(){
     nofake --error -R"${rtt_in}" "$@" >nrn_n.r
     rtt__pure_c__stdout nrn_n.r >nrn_nr.nw
     nofake.sh --error -R"${tangle_out}" -onrn_nrn.out "$@" nrn_nr.nw
+    rm -f "${tangle_out}"
     cp -av nrn_nrn.out "${tangle_out}"
     chmod 0444 "${tangle_out}"
 }
 @
 
-<<typedefs>>=
+<<ls9.c - typedefs>>=
 
-<<protos - static>>=
-
-<<enums>>=
+<<ls9.c - enums>>=
 <<untagged enums>>
-@
-
-<<structs or unions>>=
+<<ls9.c - structs or unions>>=
 <<struct imghdr>>
 @
 
 <<ls9.c>>=
-<<ls9 header>>
-<<typedefs>>
-<<enums>>
-<<structs or unions>>
+<<ls9.c - header>>
+<<ls9.c - typedefs>>
+<<ls9.c - enums>>
+<<ls9.c - structs or unions>>
 <<protos>>
-<<protos - static>>
+/*@<<protos - static>>*/
 <<globals>>
 <<impl>>
 @
 
 <<build ls9.c>>=
 <<rtt functions>>
-rm -f ls9.c
-nrn 'rtt - ls9' ls9.c "$@" >ls9.c
+nrn 'rtt - ls9' ls9.c "$@"
 @
 
 <<build ls9>>=

@@ -1,11 +1,11 @@
 
 Command line interface
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	Argv = NIL;
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 void usage(void) {
 	prints("Usage: ls9 [-Lhqv?] [-i file | -] [-l file]\n");
 	prints("           [-- argument ... | file argument ...]\n");

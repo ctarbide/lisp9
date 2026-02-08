@@ -1,12 +1,12 @@
 
 Some useful list functions
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define reverse(n) reconc((n), NIL)
 #define nreverse(n) nreconc((n), NIL)
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full reconc(full n, full m) {
 	while (n != NIL) {
 		if (atomp(n)) error("reconc: dotted list", n);

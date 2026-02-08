@@ -1,18 +1,18 @@
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define htlen(d)	veclen(cdr(d))
 #define htelts(d)	fixval(car(d))
 #define htdata(d)	cdr(d)
 #define htslots(d)	vector(cdr(d))
 @
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	Symhash = NIL;
 full	Symbols = NIL;
 full	Symptr = 0;
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full htsize(full n) {
 	if (n < 47) return 47;
 	if (n < 97) return 97;

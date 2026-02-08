@@ -1,5 +1,5 @@
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define mkifix(v) mkfix((full)(v))
 @
 
@@ -21,7 +21,7 @@ P_equal = symref("=");
 P_bitop = symref("bitop");
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 void fixover(char *who, full x, full y) {
 	char	b[100];
 

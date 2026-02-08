@@ -1,10 +1,10 @@
 
 Global environment
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 full	Glob = NIL;
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 void bindnew(full v, full a) {
 	full	n;
 

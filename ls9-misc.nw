@@ -1,11 +1,11 @@
 
 Inline functions, arithmetics
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define stackset(n,v)	(vector(Rts)[n] = (v))
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full assq(full x, full a) {
 	for (; a != NIL; a = cdr(a))
 		if (caar(a) == x) return car(a);
@@ -15,7 +15,7 @@ full assq(full x, full a) {
 
 Inline functions, characters
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 void cless(full x, full y) {
 	if (!charp(x)) expect("c<", "char", x);
 	if (!charp(y)) expect("c<", "char", y);
@@ -49,7 +49,7 @@ void cgteq(full x, full y) {
 
 Inline functions, vectors
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full b_mkvec(full x, full a) {
 	full	n, i, k, *v;
 
@@ -142,7 +142,7 @@ full subvec(full v, full n0, full n1) {
 
 Inline functions, file I/O
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full existsp(char *s) {
 	FILE	*f;
 
@@ -249,7 +249,7 @@ void b_rename(full old, full new) {
 
 Inline functions, lists
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full lconc(full x) {
 	full	p, q, n, m;
 	int	k;
@@ -300,7 +300,7 @@ full nlconc(full x) {
 
 Inline functions, type conversion
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full b_symbol(full x) {
 	full	y, n, k;
 
@@ -427,7 +427,7 @@ full strnum(char *s, full r) {
 
 Inline functions, misc
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full b_gc(void) {
 	full	n;
 

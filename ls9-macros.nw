@@ -1,5 +1,5 @@
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define tag(n)		(Tag[n])
 
 #define car(x)          (Car[x])

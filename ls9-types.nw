@@ -1,7 +1,7 @@
 
 Special Objects
 
-<<ls9 definitions>>=
+<<ls9.c - definitions>>=
 #define ATOM_TAG	0x01	/* Atom, CAR = type, CDR = next */
 #define MARK_TAG	0x02	/* Mark */
 #define TRAV_TAG	0x04	/* Traversal */
@@ -23,7 +23,7 @@ Special Objects
 #noexpand CONST_TAG
 @
 
-<<ls9 definitions>>=
+<<ls9.c - definitions>>=
 #define NIL		((full)-1)
 #define TRUE		((full)(NIL - 1))
 #define EOFMARK		((full)(NIL - 2))
@@ -43,7 +43,7 @@ Special Objects
 
 Tagged data types
 
-<<ls9 definitions>>=
+<<ls9.c - definitions>>=
 #define T_BYTECODE	((full)(DOT - 1))
 #define T_CATCHTAG	((full)(T_BYTECODE - 1))
 #define T_CHAR		((full)(T_BYTECODE - 2))
@@ -69,7 +69,7 @@ Tagged data types
 #noexpand T_VECTOR
 @
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define specialp(x)	((full)(x) >= T_VECTOR)
 
 #define cons(a, d)	cons3((a), (d), 0)
@@ -104,7 +104,7 @@ Tagged data types
 #noexpand sub_ovfl
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full mkstr(char *s, size_t k) {
 	full	n;
 

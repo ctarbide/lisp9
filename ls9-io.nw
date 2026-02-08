@@ -1,12 +1,12 @@
 
 Low-level input/output
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define printb(s)	prints((char *) s)
 #define nl()		prints("\n")
 @
 
-<<ls9 globals>>=
+<<ls9.r - globals>>=
 FILE	*Ports[NPORTS];
 byte	Port_flags[NPORTS];
 
@@ -22,7 +22,7 @@ char	*Instr = NULL;
 int	Rejected = -1;
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 int readc(void) {
 	int	c;
 
@@ -105,7 +105,7 @@ void prints(char *s) {
 
 High-level port I/O
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full newport(void) {
 	full	i, n;
 

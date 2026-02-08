@@ -1,11 +1,11 @@
 
 Printer
 
-<<ls9 definitions>>=
+<<ls9.c - definitions>>=
 #define HAVE_LONG_ABSOLUTE_FUNCTION
 @
 
-<<ls9 macros>>=
+<<ls9.c - macros>>=
 #define quoted(x, q) \
 	(car(x) == (q) && cdr(x) != NIL && NIL == cddr(x))
 @
@@ -14,7 +14,7 @@ Printer
 #noexpand quoted
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full abs_wrap(ifull x)
 {
 #ifdef HAVE_LONG_ABSOLUTE_FUNCTION

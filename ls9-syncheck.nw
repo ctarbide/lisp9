@@ -1,7 +1,7 @@
 
 Syntax checker
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 full length(full n) {
 	full	k;
 

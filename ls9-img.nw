@@ -1,7 +1,7 @@
 
 Heap image I/O
 
-<<ls9 structs or unions>>=
+<<ls9.r - structs or unions>>=
 struct imghdr {
 	char	magic[5];		/* "LISP9"	*/
 	char	version[8];		/* "yyyymmdd"	*/
@@ -18,13 +18,13 @@ struct imghdr {
 };
 @
 
-<<ls9 globals - Imagevars>>=
+<<ls9.r - globals - Imagevars>>=
 full	*Imagevars[] = {
 		&Freelist, &Freevec, &Symbols, &Symhash, &Symptr,
 		&Rts, &Glob, &Macros, &Obhash, &Obarray, &Obmap, NULL };
 @
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 void loadfile(char *s) {
 	full	ldport, rdport, oline, x;
 
@@ -136,7 +136,7 @@ Writing 1 byte or sizeof(full) shouldn't matter, a well implemented libc will
 actively minimize system calls and write blocks with sizes optmized for the
 os/platform.
 
-<<ls9 impl>>=
+<<ls9.r - impl>>=
 	if (	fwrite(Car, sizeof(full), NNODES, f) != NNODES ||
 		fwrite(Cdr, sizeof(full), NNODES, f) != NNODES ||
 		fwrite(Tag, 1, NNODES, f) != NNODES ||
