@@ -136,7 +136,6 @@ full	E0 = NIL,
 	Ep = NIL;
 
 volatile full	Run = 0;
-full	Argv;
 @
 
 <<ls9 init>>=

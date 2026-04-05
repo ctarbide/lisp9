@@ -91,8 +91,9 @@ ls9
 #define __STDC__ 1
 #define __STDC_VERSION__ 199901L
 <<ls9.r - passthru>>
-<<ls9.r - ignored macros>>
 <<ls9.r - typedef IGNORE>>
+<<ls9.r - definitions>>
+<<ls9.r - macros>>
 @
 
 <<rtt - ls9>>=
@@ -100,7 +101,7 @@ ls9
 <<ls9.c - header>>
 <<ls9.r - noexpand>>
 #output __RTT_OUTPUT
-/*@<<ls9.r - typedefs>>*/
+<<ls9.r - typedefs>>
 <<ls9.r - enums>>
 <<ls9.r - structs or unions>>
 <<ls9.r - globals>>
@@ -219,15 +220,6 @@ ls9.c ls9.nw
 #define va_arg(_1, _2) __PT__va_arg(_1, _2)
 @
 
-ignored macros in rtt
-
-<<ls9.r - ignored macros>>=
-#define __attribute__(x)
-#define restrict
-#define inline
-#define _Noreturn
-@
-
 ignored typedefs in rtt
 
 <<ls9.r - typedef IGNORE>>=
@@ -267,37 +259,52 @@ typedef IGNORE _Bool;
 <<rtt functions>>=
 rtt_gdb(){ gdb --quiet --args rtt "$@"; }
 rtt__pure_c__stdout(){
+    __RTT_PURE_C__=1; export __RTT_PURE_C__
     set -- -D__RTT__=1 -D__RTT_PURE_C__=1 "$@"
     set -- -D__RTT_OUTPUT='"/dev/stdout"' "$@"
     rtt -x "$@"
 }
+rtt__stdout(){
+    set -- -D__RTT__=1 "$@"
+    set -- -D__RTT_OUTPUT='"/dev/stdout"' "$@"
+    rtt -x "$@"
+}
+rtt__stdout__preproc(){
+    set -- -D__RTT__=1 "$@"
+    set -- -D__RTT_OUTPUT='"/dev/stdout"' "$@"
+    rtt -x -E -P "$@"
+}
 # nofake-rtt-nofake generator cycle
-nrn(){
+nrn__release(){
     rtt_in=$1; shift
     tangle_out=$1; shift
-    nofake --error -R"${rtt_in}" "$@" |
-        rtt__pure_c__stdout - |
+    nofake --error -R"${rtt_in}" "$@" | rtt__pure_c__stdout - |
         CHMOD='chmod 0444' nofake.sh --error \
             -R"${tangle_out}" -o"${tangle_out}" "$@" -
 }
-nrn_DEBUG(){
+nrn__debug(){
+    set -x
     rtt_in=$1; shift
     tangle_out=$1; shift
-    nofake --error -R"${rtt_in}" "$@" >nrn_n.r
-    rtt__pure_c__stdout nrn_n.r >nrn_nr.nw
-    nofake.sh --error -R"${tangle_out}" -onrn_nrn.out "$@" nrn_nr.nw
+    cat "$@" >nrn.input
+    nofake --error -R"${rtt_in}" nrn.input >nrn_n.r
+    rtt__stdout__preproc nrn_n.r >nrn_nr.E
+    rtt__pure_c__stdout -DDEBUG nrn_n.r >nrn_nr.nw
+    nofake.sh --error -R"${tangle_out}" -onrn_nrn.output "$@" nrn_nr.nw
     rm -f "${tangle_out}"
-    cp -av nrn_nrn.out "${tangle_out}"
+    cp -av nrn_nrn.output "${tangle_out}"
     chmod 0444 "${tangle_out}"
+}
+nrn(){
+    # nrn__debug "$@"
+    nrn__release "$@"
 }
 @
 
-<<ls9.c - typedefs>>=
-
 <<ls9.c - enums>>=
-<<untagged enums>>
+<<enums>>
 <<ls9.c - structs or unions>>=
-<<struct imghdr>>
+<<structs and unions>>
 @
 
 <<ls9.c>>=
@@ -306,7 +313,7 @@ nrn_DEBUG(){
 <<ls9.c - enums>>
 <<ls9.c - structs or unions>>
 <<protos>>
-/*@<<protos - static>>*/
+<<protos - static>>
 <<globals>>
 <<impl>>
 @
@@ -380,4 +387,16 @@ ls9.nw ls9
 
 <<run test>>=
 ./ls9 test.ls9
+@
+
+<<ls9.r - definitions>>=
+
+<<ls9.r - macros>>=
+
+<<ls9.r - typedefs>>=
+
+<<ls9.c - typedefs>>=
+
+<<protos - static>>=
+
 @

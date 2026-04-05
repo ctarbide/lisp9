@@ -52,11 +52,7 @@ full	*Vectors = NULL;
 full	Freelist = NIL;
 full	Freevec = 0;
 
-full	Obarray, Obmap;
-
 int	GC_verbose = 0;
-full	Rts;
-full	Sp;
 
 full	Tmp_car = NIL,
 	Tmp_cdr = NIL;

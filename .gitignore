@@ -1,9 +1,10 @@
 *~
 *.o
 *.stamp
+/nrn.input
 /nrn_n.r
 /nrn_nr.nw
-/nrn_nrn.out
+/nrn_nrn.output
 /ls9.c
 /ls9
 /ls9.image

@@ -49,8 +49,6 @@ full	P_abs, P_alphac, P_atom, P_bitop, P_caar, P_cadr, P_car,
 	P_veclist, P_vconc, P_vectorp, P_vfill, P_vref, P_vset, P_vsize,
 	P_whitec, P_writec;
 
-volatile int	Intr;
-
 int	Inlist = 0;
 int	Quoting = 0;
 

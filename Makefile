@@ -19,9 +19,7 @@ TARGETS = listings.nw \
 all: $(TARGETS)
 
 listings.nw: $(SOURCES)
-	rm -f listings.nw
-	nofake-exec.sh --error -R'generate listings.nw' $^ -- $(SH) >listings.nw
-	chmod 0444 listings.nw
+	nofake-exec.sh --error -R'generate listings.nw' $^ -- $(SH)
 
 dump-image.sh: listings.nw \
     ls9 ls9.nw
