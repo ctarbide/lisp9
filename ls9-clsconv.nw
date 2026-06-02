@@ -5,7 +5,8 @@ Compiler, closure conversion
 full	I_a, I_e;
 
 full	Env = NIL,
-	Envp = NIL;
+	Envp = NIL,
+	Defined = NIL;
 
 full	I_closure;
 
@@ -270,6 +271,8 @@ full defconv(full x, full e, full a) {
 	full	n, m;
 
 	newvar(cadr(x));
+	if (memq(cadr(x), Defined) == NIL)
+		Defined = cons(cadr(x), Defined);
 	n = cons(cconv(caddr(x), e, a), NIL);
 	protect(n);
 	m = mkfix(posq(cadr(x), e));
@@ -287,9 +290,17 @@ full cconv(full x, full e, full a) {
 		 S_if == car(x)     ||
 		 S_ifstar == car(x) ||
 		 S_prog == car(x)   ||
-		 S_setq == car(x)   ||
 		 subrp(car(x))))
 	{
+		return cons(car(x), mapconv(cdr(x), e, a));
+	}
+	if (pairp(x) && S_setq == car(x)) {
+		if (	e == Env &&
+			symbolp(cadr(x)) &&
+			memq(cadr(x), Defined) == NIL)
+		{
+			error("undefined symbol", cadr(x));
+		}
 		return cons(car(x), mapconv(cdr(x), e, a));
 	}
 	if ((n = posq(x, a)) != NIL) {
@@ -368,6 +379,7 @@ full clsconv(full x) {
 
 	Env = carof(Glob);
 	Envp = NIL;
+	if (NIL == Defined) Defined = carof(Glob);
 	if (NIL == Env) Env = cons(UNDEF, NIL);
 	n = cconv(x, Env, NIL);
 	protect(n);

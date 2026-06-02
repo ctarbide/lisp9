@@ -66,7 +66,7 @@ inclusion.
 
 <<ls9.r - globals - GC_roots>>=
 full	*GC_roots[] = {
-		&Protected, &Symbols, &Symhash, &Prog, &Env, &Obhash,
+		&Protected, &Symbols, &Symhash, &Prog, &Env, &Defined, &Obhash,
 		&Obarray, &Obmap, &Cts, &Emitbuf, &Glob, &Macros, &Rts,
 		&Acc, &E0, &Ep, &Argv, &Tmp, &Tmp_car, &Tmp_cdr, &Files,
 		&Outstr, &Nullvec, &Nullstr, &Blank, &Zero, &One, &Ten,

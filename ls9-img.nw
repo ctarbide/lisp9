@@ -21,7 +21,8 @@ struct imghdr {
 <<ls9.r - globals - Imagevars>>=
 full	*Imagevars[] = {
 		&Freelist, &Freevec, &Symbols, &Symhash, &Symptr,
-		&Rts, &Glob, &Macros, &Obhash, &Obarray, &Obmap, NULL };
+		&Rts, &Glob, &Macros, &Obhash, &Obarray, &Obmap,
+		&Defined, NULL };
 @
 
 <<ls9.r - impl>>=
